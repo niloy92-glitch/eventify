@@ -1,0 +1,50 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}Eventify{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="{% static 'users/css/style.css' %}" />
+    {% block extra_head %}{% endblock %}
+  </head>
+  <body data-require-role="{{ role }}">
+    <header class="navbar">
+      <div class="nav-inner">
+        <a class="logo-link" href="{{ dashboard_url }}">Event<span>ify</span></a>
+
+        <section class="sidebar-user" aria-label="Current user">
+          <div class="sidebar-user-avatar" aria-hidden="true">{{ initials }}</div>
+          <div>
+            <p class="sidebar-user-name">{{ user_name }}</p>
+            <p class="sidebar-user-role">{{ role|title }}</p>
+          </div>
+        </section>
+
+        <nav class="nav-links nav-center" aria-label="Dashboard navigation">
+          {% for link in nav_links %}
+            <a class="nav-link{% if link.active %} active{% endif %}" href="{{ link.href }}">{{ link.label }}</a>
+          {% endfor %}
+        </nav>
+
+        <div class="nav-tools">
+          <div class="sidebar-notification">
+            <div class="sidebar-notification-title">{{ notification_title }}</div>
+            <div class="sidebar-notification-text">{{ notification_text }}</div>
+          </div>
+
+          <form action="{% url 'users:logout' %}" method="post">
+            {% csrf_token %}
+            <button class="btn" type="submit">Logout</button>
+          </form>
+        </div>
+      </div>
+    </header>
+
+    <main class="main container">
+      {% block content %}{% endblock %}
+    </main>
+  </body>
+</html>

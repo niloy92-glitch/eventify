@@ -1,0 +1,48 @@
+{% extends 'users/base.html' %}
+
+{% block title %}Admin Dashboard - Eventify{% endblock %}
+
+{% block content %}
+  <section class="hero" id="overview">
+    <h1>Admin dashboard</h1>
+    <p>{{ subtitle }}</p>
+    <a class="btn btn-accent" href="/admin/">Open Django admin</a>
+  </section>
+
+  <section class="section" id="summary">
+    <h2>Summary</h2>
+    <div class="grid grid-4">
+      <article class="card stat-card">
+        <h3>Clients</h3>
+        <p class="stat-value">124</p>
+        <p class="muted">Registered client accounts.</p>
+      </article>
+      <article class="card stat-card">
+        <h3>Vendors</h3>
+        <p class="stat-value">38</p>
+        <p class="muted">Vendor accounts awaiting review.</p>
+      </article>
+      <article class="card stat-card">
+        <h3>Pending approvals</h3>
+        <p class="stat-value">11</p>
+        <p class="muted">Accounts or requests waiting action.</p>
+      </article>
+      <article class="card stat-card">
+        <h3>Platform events</h3>
+        <p class="stat-value">290</p>
+        <p class="muted">Total event records in the system.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="section" id="activity">
+    <h2>Recent activity</h2>
+    <div class="card">
+      <div class="grid">
+        <div class="row-between"><span>Vendor verification queued</span><span class="date-label">Today</span></div>
+        <div class="row-between"><span>User support ticket resolved</span><span class="date-label">Yesterday</span></div>
+        <div class="row-between"><span>Daily audit snapshot completed</span><span class="date-label">2 days ago</span></div>
+      </div>
+    </div>
+  </section>
+{% endblock %}

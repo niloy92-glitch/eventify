@@ -1,0 +1,43 @@
+{% extends 'users/base.html' %}
+
+{% block title %}Vendor Dashboard - Eventify{% endblock %}
+
+{% block content %}
+  <section class="hero" id="overview">
+    <h1>Vendor dashboard</h1>
+    <p>{{ subtitle }}</p>
+    <a class="btn btn-accent" href="#services">Review services</a>
+  </section>
+
+  <section class="section" id="services">
+    <h2>Services</h2>
+    <div class="grid grid-3">
+      <article class="card stat-card">
+        <h3>Published services</h3>
+        <p class="stat-value">8</p>
+        <p class="muted">Packages available to clients right now.</p>
+      </article>
+      <article class="card stat-card">
+        <h3>New leads</h3>
+        <p class="stat-value">5</p>
+        <p class="muted">Requests waiting for your response.</p>
+      </article>
+      <article class="card stat-card">
+        <h3>Confirmed bookings</h3>
+        <p class="stat-value">19</p>
+        <p class="muted">Events already scheduled and active.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="section" id="activity">
+    <h2>Recent activity</h2>
+    <div class="card">
+      <div class="grid">
+        <div class="row-between"><span>New wedding inquiry received</span><span class="date-label">Today</span></div>
+        <div class="row-between"><span>Birthday package approved</span><span class="date-label">Yesterday</span></div>
+        <div class="row-between"><span>Service pricing updated</span><span class="date-label">2 days ago</span></div>
+      </div>
+    </div>
+  </section>
+{% endblock %}
