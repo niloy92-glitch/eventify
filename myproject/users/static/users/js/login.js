@@ -1,4 +1,4 @@
-async function loginRequest(email, password, remember, csrfToken) {
+async function loginRequest(email, password, remember, role, csrfToken) {
   const response = await fetch("/users/api/login/", {
     method: "POST",
     headers: {
@@ -6,7 +6,7 @@ async function loginRequest(email, password, remember, csrfToken) {
       "X-CSRFToken": csrfToken,
     },
     credentials: "same-origin",
-    body: JSON.stringify({ email, password, remember }),
+    body: JSON.stringify({ email, password, remember, role }),
   });
 
   let data = {};
@@ -23,6 +23,25 @@ function initLoginForms() {
   const form = document.getElementById("login-form");
   if (!form) return;
 
+  const tabButtons = form.querySelectorAll(".auth-tab[data-role]");
+  const roleInput = document.getElementById("login-role");
+
+  tabButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      const selectedRole = button.getAttribute("data-role");
+      if (!selectedRole || !roleInput) {
+        return;
+      }
+
+      roleInput.value = selectedRole;
+      tabButtons.forEach((tab) => {
+        const isActive = tab === button;
+        tab.classList.toggle("active", isActive);
+        tab.setAttribute("aria-selected", String(isActive));
+      });
+    });
+  });
+
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     const emailInput = document.getElementById("client-email");
@@ -30,8 +49,9 @@ function initLoginForms() {
     const rememberInput = document.getElementById("client-remember");
     const status = form.querySelector(".status-text");
     const csrfInput = form.querySelector('input[name="csrfmiddlewaretoken"]');
+    const loginRoleInput = document.getElementById("login-role");
 
-    if (!emailInput || !passwordInput || !status || !csrfInput) {
+    if (!emailInput || !passwordInput || !status || !csrfInput || !loginRoleInput) {
       return;
     }
 
@@ -42,6 +62,7 @@ function initLoginForms() {
         emailInput.value.trim(),
         passwordInput.value,
         !!(rememberInput && rememberInput.checked),
+        loginRoleInput.value,
         csrfInput.value,
       );
 

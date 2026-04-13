@@ -89,6 +89,26 @@
         padding: 40px 24px;
         background: var(--bg);
       }
+      .auth-tabs {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 8px;
+        margin-bottom: 14px;
+      }
+      .auth-tab {
+        border: 1px solid var(--line-2);
+        background: var(--surface-2);
+        color: var(--text-2);
+        border-radius: var(--radius);
+        padding: 8px 12px;
+        font-size: 14px;
+        font-weight: 600;
+      }
+      .auth-tab.active {
+        background: var(--ink);
+        color: var(--ink-inv);
+        border-color: var(--ink);
+      }
       @media (max-width: 700px) {
         .auth-layout {
           grid-template-columns: 1fr;
@@ -124,6 +144,18 @@
 
           <form id="login-form">
             {% csrf_token %}
+            <div class="auth-tabs" role="tablist" aria-label="Select account type">
+              <button class="auth-tab active" type="button" data-role="client" role="tab" aria-selected="true">
+                Client
+              </button>
+              <button class="auth-tab" type="button" data-role="vendor" role="tab" aria-selected="false">
+                Vendor
+              </button>
+              <button class="auth-tab" type="button" data-role="admin" role="tab" aria-selected="false">
+                Admin
+              </button>
+            </div>
+            <input id="login-role" type="hidden" value="client" />
             <div class="field">
               <label for="client-email">Email</label>
               <input id="client-email" type="email" placeholder="Enter email" required />

@@ -16,6 +16,12 @@ ROLE_REDIRECTS = {
 	"admin": "/users/dashboard/admin/",
 }
 
+LOGIN_REDIRECTS = {
+	"client": "/client/",
+	"vendor": "/vendor/",
+	"admin": "/admin/",
+}
+
 
 @require_GET
 def root_redirect(request: HttpRequest) -> HttpResponse:
@@ -25,7 +31,7 @@ def root_redirect(request: HttpRequest) -> HttpResponse:
 @require_GET
 def login_page(request: HttpRequest) -> HttpResponse:
 	if request.user.is_authenticated:
-		return redirect(ROLE_REDIRECTS.get(getattr(request.user, "role", "client"), "/"))
+		return redirect(LOGIN_REDIRECTS.get(getattr(request.user, "role", "client"), "/"))
 	return render(request, "users/login.html")
 
 
@@ -39,13 +45,20 @@ def login_api(request: HttpRequest) -> JsonResponse:
 	email = str(data.get("email", "")).strip().lower()
 	password = str(data.get("password", ""))
 	remember = bool(data.get("remember", False))
+	role = str(data.get("role", "")).strip().lower()
 
 	if not email or not password:
 		return JsonResponse({"ok": False, "message": "Email and password are required."}, status=400)
+	if role not in ROLE_REDIRECTS:
+		return JsonResponse({"ok": False, "message": "Invalid role selected."}, status=400)
+	if not User.objects.filter(email__iexact=email, role=role).exists():
+		return JsonResponse({"ok": False, "message": "No user found."}, status=404)
 
 	user = authenticate(request, username=email, password=password)
 	if not user:
 		return JsonResponse({"ok": False, "message": "Invalid credentials."}, status=401)
+	if user.role != role:
+		return JsonResponse({"ok": False, "message": "No user found."}, status=404)
 
 	login(request, user)
 	request.session.set_expiry(60 * 60 * 24 * 14 if remember else 0)
@@ -54,7 +67,7 @@ def login_api(request: HttpRequest) -> JsonResponse:
 		{
 			"ok": True,
 			"message": "Login successful.",
-			"redirect_url": ROLE_REDIRECTS[user.role],
+			"redirect_url": LOGIN_REDIRECTS[user.role],
 		}
 	)
 
