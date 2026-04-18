@@ -28,8 +28,16 @@
         position: absolute;
         inset: 0;
         background:
-          radial-gradient(ellipse 70% 60% at 30% 80%, rgba(201, 66, 14, 0.35) 0%, transparent 60%),
-          radial-gradient(ellipse 50% 40% at 70% 20%, rgba(14, 124, 114, 0.2) 0%, transparent 60%);
+          radial-gradient(
+            ellipse 70% 60% at 30% 80%,
+            rgba(201, 66, 14, 0.35) 0%,
+            transparent 60%
+          ),
+          radial-gradient(
+            ellipse 50% 40% at 70% 20%,
+            rgba(14, 124, 114, 0.2) 0%,
+            transparent 60%
+          );
         pointer-events: none;
       }
       .auth-brand-logo {
@@ -126,7 +134,8 @@
         <div class="auth-brand-content">
           <h2>Your events,<br />perfectly organized</h2>
           <p>
-            Connect with top vendors, manage bookings, and bring your vision to life with Eventify.
+            Connect with top vendors, manage bookings, and bring your vision to
+            life with Eventify.
           </p>
           <div class="auth-brand-stat">
             <div><strong>1,240</strong><span>Clients</span></div>
@@ -134,7 +143,15 @@
             <div><strong>890</strong><span>Events</span></div>
           </div>
         </div>
-        <p style="color: rgba(255, 255, 255, 0.25); font-size: 12px; position: relative">© 2026 Eventify</p>
+        <p
+          style="
+            color: rgba(255, 255, 255, 0.25);
+            font-size: 12px;
+            position: relative;
+          "
+        >
+          © 2026 Eventify
+        </p>
       </div>
 
       <div class="auth-form-side">
@@ -144,25 +161,57 @@
 
           <form id="login-form">
             {% csrf_token %}
-            <div class="auth-tabs" role="tablist" aria-label="Select account type">
-              <button class="auth-tab active" type="button" data-role="client" role="tab" aria-selected="true">
+            <div
+              class="auth-tabs"
+              role="tablist"
+              aria-label="Select account type"
+            >
+              <button
+                class="auth-tab active"
+                type="button"
+                data-role="client"
+                role="tab"
+                aria-selected="true"
+              >
                 Client
               </button>
-              <button class="auth-tab" type="button" data-role="vendor" role="tab" aria-selected="false">
+              <button
+                class="auth-tab"
+                type="button"
+                data-role="vendor"
+                role="tab"
+                aria-selected="false"
+              >
                 Vendor
               </button>
-              <button class="auth-tab" type="button" data-role="admin" role="tab" aria-selected="false">
+              <button
+                class="auth-tab"
+                type="button"
+                data-role="admin"
+                role="tab"
+                aria-selected="false"
+              >
                 Admin
               </button>
             </div>
             <input id="login-role" type="hidden" value="client" />
             <div class="field">
               <label for="client-email">Email</label>
-              <input id="client-email" type="email" placeholder="Enter email" required />
+              <input
+                id="client-email"
+                type="email"
+                placeholder="Enter email"
+                required
+              />
             </div>
             <div class="field">
               <label for="client-password">Password</label>
-              <input id="client-password" type="password" placeholder="Enter password" required />
+              <input
+                id="client-password"
+                type="password"
+                placeholder="Enter password"
+                required
+              />
             </div>
             <div class="row" style="margin-bottom: 16px">
               <label class="remember" for="client-remember">
@@ -170,6 +219,15 @@
               </label>
             </div>
             <button class="submit-btn" type="submit">Sign In</button>
+
+            <div class="auth-divider">OR</div>
+            <div class="auth-socials">
+              <button class="btn social-btn" type="button">
+                <span class="social-icon">G</span>
+                <span>{{ google_label }}</span>
+              </button>
+            </div>
+
             <p class="status-text"></p>
           </form>
         </section>

@@ -1,0 +1,670 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>
+      Eventify - {% if mode == 'register' %}Register{% else %}Login{% endif %}
+    </title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="{% static 'users/css/style.css' %}" />
+    <style>
+      .auth-shell {
+        display: grid;
+        grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+        min-height: 100vh;
+        background: var(--bg);
+      }
+
+      .auth-brand {
+        background: linear-gradient(145deg, #141210 0%, #1f1b16 100%);
+        color: #fff;
+        padding: 40px;
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        gap: 24px;
+      }
+
+      .auth-brand::before,
+      .auth-brand::after {
+        content: "";
+        position: absolute;
+        inset: auto;
+        border-radius: 999px;
+        pointer-events: none;
+      }
+
+      .auth-brand::before {
+        width: 440px;
+        height: 440px;
+        top: -120px;
+        right: -120px;
+        background: radial-gradient(
+          circle,
+          rgba(201, 66, 14, 0.34) 0%,
+          transparent 70%
+        );
+      }
+
+      .auth-brand::after {
+        width: 360px;
+        height: 360px;
+        left: -140px;
+        bottom: -120px;
+        background: radial-gradient(
+          circle,
+          rgba(14, 124, 114, 0.24) 0%,
+          transparent 70%
+        );
+      }
+
+      .auth-brand-top,
+      .auth-brand-bottom {
+        position: relative;
+        z-index: 1;
+      }
+
+      .auth-brand-logo {
+        font-family: var(--font-display);
+        font-size: 1.5rem;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        color: #fff;
+        display: inline-flex;
+        align-items: center;
+        gap: 2px;
+      }
+
+      .auth-brand-logo span {
+        color: var(--accent-mid);
+      }
+
+      .auth-brand-copy {
+        max-width: 420px;
+        margin-top: 88px;
+      }
+
+      .auth-brand-copy h1 {
+        font-family: var(--font-display);
+        font-size: clamp(2rem, 4vw, 3.5rem);
+        line-height: 1.02;
+        letter-spacing: -0.05em;
+        margin-bottom: 14px;
+      }
+
+      .auth-brand-copy p {
+        color: rgba(255, 255, 255, 0.68);
+        max-width: 420px;
+        font-size: 15px;
+      }
+
+      .auth-brand-metrics {
+        display: flex;
+        gap: 18px;
+        flex-wrap: wrap;
+      }
+
+      .auth-metric {
+        min-width: 118px;
+        padding: 14px 16px;
+        border-radius: var(--radius-lg);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.04);
+        backdrop-filter: blur(12px);
+      }
+
+      .auth-metric strong {
+        display: block;
+        font-family: var(--font-display);
+        font-size: 1.25rem;
+        margin-bottom: 4px;
+      }
+
+      .auth-metric span {
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.55);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+
+      .auth-panel {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 32px 20px;
+      }
+
+      .auth-card {
+        width: min(520px, 100%);
+      }
+
+      .auth-mode-switch {
+        display: inline-flex;
+        gap: 4px;
+        padding: 4px;
+        border-radius: var(--radius);
+        background: var(--surface-2);
+        margin-bottom: 18px;
+      }
+
+      .auth-mode-switch a {
+        padding: 8px 14px;
+        border-radius: var(--radius-sm);
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-3);
+      }
+
+      .auth-mode-switch a.active {
+        background: var(--surface);
+        color: var(--text);
+        box-shadow: var(--shadow-sm);
+      }
+
+      .auth-tabs {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+        margin: 18px 0 18px;
+      }
+
+      .auth-tab {
+        border: 1px solid var(--line-2);
+        background: var(--surface-2);
+        color: var(--text-2);
+        border-radius: var(--radius);
+        padding: 10px 12px;
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      .auth-tab.active {
+        background: var(--ink);
+        color: var(--ink-inv);
+        border-color: var(--ink);
+      }
+
+      .auth-intro {
+        margin-top: 6px;
+        margin-bottom: 10px;
+        color: var(--text-3);
+      }
+
+      .auth-socials {
+        display: grid;
+        gap: 10px;
+        margin-bottom: 18px;
+      }
+
+      .social-btn {
+        width: 100%;
+        justify-content: center;
+        background: var(--surface);
+        border: 1px solid var(--line-2);
+        color: var(--text);
+      }
+
+      .social-btn .social-icon {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        display: inline-grid;
+        place-items: center;
+        background: conic-gradient(
+          from 180deg,
+          #ea4335 0 25%,
+          #fbbc05 25% 50%,
+          #34a853 50% 75%,
+          #4285f4 75% 100%
+        );
+        color: #fff;
+        font-size: 11px;
+        font-weight: 800;
+      }
+
+      .auth-divider {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin: 18px 0;
+        color: var(--text-3);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .auth-divider::before,
+      .auth-divider::after {
+        content: "";
+        flex: 1;
+        height: 1px;
+        background: var(--line);
+      }
+
+      .auth-role-panel {
+        display: none;
+      }
+
+      .auth-role-panel.active {
+        display: block;
+      }
+
+      .auth-footer {
+        margin-top: 16px;
+        font-size: 14px;
+        color: var(--text-2);
+        text-align: center;
+      }
+
+      .auth-footer a {
+        color: var(--accent-dark);
+        font-weight: 700;
+      }
+
+      .field-grid-2 {
+        display: grid;
+        gap: 14px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .auth-note {
+        margin-top: 10px;
+        font-size: 13px;
+        color: var(--text-3);
+      }
+
+      @media (max-width: 900px) {
+        .auth-shell {
+          grid-template-columns: 1fr;
+        }
+
+        .auth-brand {
+          min-height: 320px;
+        }
+
+        .auth-brand-copy {
+          margin-top: 42px;
+        }
+      }
+
+      @media (max-width: 640px) {
+        .auth-brand {
+          display: none;
+        }
+
+        .auth-panel {
+          padding: 20px 12px;
+        }
+
+        .auth-card {
+          width: 100%;
+          padding: 22px;
+        }
+
+        .field-grid-2 {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      class="auth-shell"
+      data-auth-mode="{{ mode }}"
+      data-active-role="{{ active_role }}"
+    >
+      <aside class="auth-brand">
+        <div class="auth-brand-top">
+          <a class="auth-brand-logo" href="/">Event<span>ify</span></a>
+          <div class="auth-brand-copy">
+            <h1>Build events with one clean flow.</h1>
+            <p>
+              Eventify keeps clients, vendors, and admins in separate lanes with
+              role-aware access, smooth onboarding, and a lightweight dashboard
+              after sign in.
+            </p>
+          </div>
+        </div>
+        <div class="auth-brand-bottom">
+          <div class="auth-brand-metrics">
+            <div class="auth-metric">
+              <strong>1,240</strong><span>Clients</span>
+            </div>
+            <div class="auth-metric">
+              <strong>310</strong><span>Vendors</span>
+            </div>
+            <div class="auth-metric">
+              <strong>890</strong><span>Events</span>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <main class="auth-panel">
+        <section class="card auth-card">
+          <div
+            class="auth-mode-switch"
+            role="tablist"
+            aria-label="Authentication mode"
+          >
+            <a
+              class="{% if mode == 'login' %}active{% endif %}"
+              href="{% url 'users:login' %}?role={{ active_role }}"
+              >Login</a
+            >
+            <a
+              class="{% if mode == 'register' %}active{% endif %}"
+              href="{% url 'users:register' %}?role={{ active_role }}"
+              >Register</a
+            >
+          </div>
+
+          <h1>
+            {% if mode == 'register' %}Create your account{% else %}Welcome
+            back{% endif %}
+          </h1>
+          <p class="auth-intro">
+            {% if mode == 'register' %} Join Eventify using the role that fits
+            your account. {% else %} Sign in to continue to your Eventify
+            workspace. {% endif %}
+          </p>
+
+          <div
+            class="auth-tabs"
+            role="tablist"
+            aria-label="Select account type"
+          >
+            {% for role in roles %}
+            <button
+              class="auth-tab{% if role.value == active_role %} active{% endif %}"
+              type="button"
+              data-role="{{ role.value }}"
+              role="tab"
+              aria-selected="{% if role.value == active_role %}true{% else %}false{% endif %}"
+            >
+              {{ role.label }}
+            </button>
+            {% endfor %}
+          </div>
+
+          {% if mode == 'login' %}
+          <form
+            id="auth-form"
+            data-mode="login"
+            data-login-url="{% url 'users:login_api' %}"
+            data-register-url="{% url 'users:register_api' %}"
+          >
+            {% csrf_token %}
+            <input
+              id="auth-role"
+              type="hidden"
+              name="role"
+              value="{{ active_role }}"
+            />
+
+            <div class="field">
+              <label for="auth-email">Email</label>
+              <input
+                id="auth-email"
+                type="email"
+                placeholder="Enter email"
+                autocomplete="email"
+                required
+              />
+            </div>
+
+            <div class="field">
+              <label for="auth-password">Password</label>
+              <input
+                id="auth-password"
+                type="password"
+                placeholder="Enter password"
+                autocomplete="current-password"
+                required
+              />
+            </div>
+
+            <div class="row-between" style="margin-bottom: 16px">
+              <label
+                class="remember"
+                for="auth-remember"
+                style="margin-bottom: 0"
+              >
+                <input id="auth-remember" type="checkbox" /> Remember me
+              </label>
+              <a class="muted" href="#">Forgot password?</a>
+            </div>
+            
+            <button class="submit-btn" type="submit">Sign In</button>
+            <div class="auth-divider">OR</div>
+            <div class="auth-socials">
+              <button class="btn social-btn" type="button">
+                <span class="social-icon">G</span>
+                <span>{{ google_label }}</span>
+              </button>
+            </div>
+            <p class="status-text" aria-live="polite"></p>
+            <p class="auth-footer">
+              <a
+                id="auth-role-link"
+                href="{% url 'users:register' %}?role={{ active_role }}"
+                >Don't have an account? Register Now!</a
+              >
+            </p>
+          </form>
+          {% else %}
+          <form
+            id="auth-form"
+            data-mode="register"
+            data-login-url="{% url 'users:login_api' %}"
+            data-register-url="{% url 'users:register_api' %}"
+          >
+            {% csrf_token %}
+            <input
+              id="auth-role"
+              type="hidden"
+              name="role"
+              value="{{ active_role }}"
+            />
+
+            <div
+              class="auth-role-panel {% if active_role == 'client' %}active{% endif %}"
+              data-panel-role="client"
+            >
+              <div class="field-grid-2">
+                <div class="field">
+                  <label for="client-first-name">First name</label>
+                  <input
+                    id="client-first-name"
+                    type="text"
+                    placeholder="First name"
+                    autocomplete="given-name"
+                  />
+                </div>
+                <div class="field">
+                  <label for="client-last-name">Last name</label>
+                  <input
+                    id="client-last-name"
+                    type="text"
+                    placeholder="Last name"
+                    autocomplete="family-name"
+                  />
+                </div>
+              </div>
+              <div class="field">
+                <label for="client-email">Email</label>
+                <input
+                  id="client-email"
+                  type="email"
+                  placeholder="Enter email"
+                  autocomplete="email"
+                />
+              </div>
+              <div class="field-grid-2">
+                <div class="field">
+                  <label for="client-password">Password</label>
+                  <input
+                    id="client-password"
+                    type="password"
+                    placeholder="Create password"
+                    autocomplete="new-password"
+                  />
+                </div>
+                <div class="field">
+                  <label for="client-confirm-password">Confirm password</label>
+                  <input
+                    id="client-confirm-password"
+                    type="password"
+                    placeholder="Confirm password"
+                    autocomplete="new-password"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div
+              class="auth-role-panel {% if active_role == 'vendor' %}active{% endif %}"
+              data-panel-role="vendor"
+            >
+              <div class="field">
+                <label for="vendor-company-name">Company name</label>
+                <input
+                  id="vendor-company-name"
+                  type="text"
+                  placeholder="Company name"
+                  autocomplete="organization"
+                />
+              </div>
+              <div class="field">
+                <label for="vendor-email">Email</label>
+                <input
+                  id="vendor-email"
+                  type="email"
+                  placeholder="Enter email"
+                  autocomplete="email"
+                />
+              </div>
+              <div class="field-grid-2">
+                <div class="field">
+                  <label for="vendor-password">Password</label>
+                  <input
+                    id="vendor-password"
+                    type="password"
+                    placeholder="Create password"
+                    autocomplete="new-password"
+                  />
+                </div>
+                <div class="field">
+                  <label for="vendor-confirm-password">Confirm password</label>
+                  <input
+                    id="vendor-confirm-password"
+                    type="password"
+                    placeholder="Confirm password"
+                    autocomplete="new-password"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div
+              class="auth-role-panel {% if active_role == 'admin' %}active{% endif %}"
+              data-panel-role="admin"
+            >
+              <div class="field-grid-2">
+                <div class="field">
+                  <label for="admin-first-name">First name</label>
+                  <input
+                    id="admin-first-name"
+                    type="text"
+                    placeholder="First name"
+                    autocomplete="given-name"
+                  />
+                </div>
+                <div class="field">
+                  <label for="admin-last-name">Last name</label>
+                  <input
+                    id="admin-last-name"
+                    type="text"
+                    placeholder="Last name"
+                    autocomplete="family-name"
+                  />
+                </div>
+              </div>
+              <div class="field">
+                <label for="admin-email">Email</label>
+                <input
+                  id="admin-email"
+                  type="email"
+                  placeholder="Enter email"
+                  autocomplete="email"
+                />
+              </div>
+              <div class="field-grid-2">
+                <div class="field">
+                  <label for="admin-password">Password</label>
+                  <input
+                    id="admin-password"
+                    type="password"
+                    placeholder="Create password"
+                    autocomplete="new-password"
+                  />
+                </div>
+                <div class="field">
+                  <label for="admin-confirm-password">Confirm password</label>
+                  <input
+                    id="admin-confirm-password"
+                    type="password"
+                    placeholder="Confirm password"
+                    autocomplete="new-password"
+                  />
+                </div>
+              </div>
+              <div class="field">
+                <label for="admin-referral-code">Referral code</label>
+                <input
+                  id="admin-referral-code"
+                  type="text"
+                  value="eventify"
+                  placeholder="eventify"
+                />
+              </div>
+            </div>
+
+            <button class="submit-btn" type="submit">Create Account</button>
+            <div class="auth-divider">OR</div>
+            <div class="auth-socials">
+              <button class="btn social-btn" type="button">
+                <span class="social-icon">G</span>
+                <span>{{ google_label }}</span>
+              </button>
+            </div>
+            <p class="status-text" aria-live="polite"></p>
+            <p class="auth-footer">
+              <a
+                id="auth-role-link"
+                href="{% url 'users:login' %}?role={{ active_role }}"
+                >Already have an account? Sign in now!</a
+              >
+            </p>
+            {% comment %}
+            <p class="auth-note">
+              {% if active_role == 'admin' %} Admin registrations require the
+              referral code <strong>eventify</strong>. {% elif active_role ==
+              'vendor' %} Vendor accounts use your company name as the primary
+              profile field. {% else %} Client accounts need a first and last
+              name. {% endif %}
+            </p>
+            {% endcomment %}
+          </form>
+          {% endif %}
+        </section>
+      </main>
+    </div>
+    <script src="{% static 'users/js/auth.js' %}"></script>
+  </body>
+</html>
