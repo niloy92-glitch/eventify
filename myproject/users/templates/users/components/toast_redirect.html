@@ -1,0 +1,14 @@
+{% load static %}
+<script src="{% static 'users/js/toast.js' %}"></script>
+<script>
+  (function () {
+    if (window.EventifyToast && "{{ toast_message|escapejs }}") {
+      window.EventifyToast.show("{{ toast_message|escapejs }}", "{{ toast_level|default:'info'|escapejs }}", 3200);
+    }
+    {% if redirect_url %}
+    setTimeout(function () {
+      window.location.href = "{{ redirect_url|escapejs }}";
+    }, {{ redirect_delay_ms|default:1600 }});
+    {% endif %}
+  })();
+</script>

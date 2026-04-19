@@ -21,6 +21,7 @@ class EventUser(AbstractBaseUser, PermissionsMixin):
 	phone = models.CharField(max_length=20, blank=True, null=True)
 	address = models.TextField(blank=True, null=True)
 	referral_code = models.CharField(max_length=100, blank=True)
+	email_verified = models.BooleanField(default=True)
 
 	is_active = models.BooleanField(default=True)
 	is_staff = models.BooleanField(default=False)

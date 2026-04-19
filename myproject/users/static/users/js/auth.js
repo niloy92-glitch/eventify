@@ -25,9 +25,11 @@ function setActiveRole(authShell, role) {
   const roleButtons = authShell.querySelectorAll(".auth-tab[data-role]");
   const rolePanels = authShell.querySelectorAll(".auth-role-panel[data-panel-role]");
   const roleLink = authShell.querySelector("#auth-role-link");
+  const googleButtons = authShell.querySelectorAll("[data-google-auth]");
   const mode = authShell.dataset.authMode;
-  const loginBase = form ? form.dataset.loginUrl : "/users/api/login/";
-  const registerBase = form ? form.dataset.registerUrl : "/users/api/register/";
+  const loginPageUrl = authShell.dataset.loginPageUrl || "/users/login/";
+  const registerPageUrl = authShell.dataset.registerPageUrl || "/users/register/";
+  const googleStartUrl = authShell.dataset.googleStartUrl || "/users/auth/google/start/";
 
   if (!role || !roleInput) {
     return;
@@ -47,7 +49,7 @@ function setActiveRole(authShell, role) {
 
   if (roleLink) {
     if (mode === "login") {
-      roleLink.href = `/users/register/?role=${encodeURIComponent(role)}`;
+      roleLink.href = `${registerPageUrl}?role=${encodeURIComponent(role)}`;
       const copyMap = {
         client: "Don't have an account? Register Now!",
         vendor: "Join as a vendor",
@@ -55,7 +57,7 @@ function setActiveRole(authShell, role) {
       };
       roleLink.textContent = copyMap[role] || copyMap.client;
     } else {
-      roleLink.href = `/users/login/?role=${encodeURIComponent(role)}`;
+      roleLink.href = `${loginPageUrl}?role=${encodeURIComponent(role)}`;
       const copyMap = {
         client: "Already have a client account? Sign in now!",
         vendor: "Already have a vendor account? Sign in now!",
@@ -65,11 +67,15 @@ function setActiveRole(authShell, role) {
     }
   }
 
+  googleButtons.forEach((button) => {
+    button.onclick = () => {
+      window.location.href = `${googleStartUrl}?mode=${encodeURIComponent(mode)}&role=${encodeURIComponent(role)}`;
+    };
+  });
+
   const nextUrl = new URL(window.location.href);
   nextUrl.searchParams.set("role", role);
   window.history.replaceState({}, "", nextUrl.toString());
-
-  return { loginBase, registerBase };
 }
 
 function collectRegisterPayload(authShell, role) {
@@ -115,6 +121,10 @@ function initAuthPage() {
   const csrfInput = form ? form.querySelector('input[name="csrfmiddlewaretoken"]') : null;
 
   setActiveRole(authShell, selectedRole);
+
+  if (window.EventifyToast) {
+    window.EventifyToast.fromQuery();
+  }
 
   roleButtons.forEach((button) => {
     button.addEventListener("click", () => {
