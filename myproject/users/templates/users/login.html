@@ -5,157 +5,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Eventify - Login</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="{% static 'users/css/style.css' %}" />
-    <style>
-      .auth-layout {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        min-height: 100vh;
-      }
-      .auth-brand {
-        background: var(--ink);
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-        padding: 40px;
-        position: relative;
-        overflow: hidden;
-      }
-      .auth-brand::before {
-        content: "";
-        position: absolute;
-        inset: 0;
-        background:
-          radial-gradient(
-            ellipse 70% 60% at 30% 80%,
-            rgba(201, 66, 14, 0.35) 0%,
-            transparent 60%
-          ),
-          radial-gradient(
-            ellipse 50% 40% at 70% 20%,
-            rgba(14, 124, 114, 0.2) 0%,
-            transparent 60%
-          );
-        pointer-events: none;
-      }
-      .auth-brand-logo {
-        font-family: var(--font-display);
-        font-weight: 800;
-        font-size: 1.4rem;
-        color: #fff;
-        position: relative;
-      }
-      .auth-brand-logo span {
-        color: var(--accent-mid);
-      }
-      .auth-brand-content {
-        position: relative;
-      }
-      .auth-brand-content h2 {
-        font-family: var(--font-display);
-        font-size: clamp(1.6rem, 2.5vw, 2.2rem);
-        font-weight: 800;
-        color: #fff;
-        line-height: 1.2;
-        letter-spacing: -0.03em;
-        margin-bottom: 12px;
-      }
-      .auth-brand-content p {
-        color: rgba(255, 255, 255, 0.55);
-        font-size: 15px;
-        max-width: 360px;
-        line-height: 1.7;
-      }
-      .auth-brand-stat {
-        display: flex;
-        gap: 24px;
-        margin-top: 28px;
-        flex-wrap: wrap;
-      }
-      .auth-brand-stat div {
-        position: relative;
-      }
-      .auth-brand-stat strong {
-        display: block;
-        font-family: var(--font-display);
-        font-size: 1.5rem;
-        font-weight: 800;
-        color: #fff;
-      }
-      .auth-brand-stat span {
-        font-size: 12px;
-        color: rgba(255, 255, 255, 0.45);
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-      }
-      .auth-form-side {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 40px 24px;
-        background: var(--bg);
-      }
-      .auth-tabs {
-        display: grid;
-        grid-template-columns: 1fr 1fr 1fr;
-        gap: 8px;
-        margin-bottom: 14px;
-      }
-      .auth-tab {
-        border: 1px solid var(--line-2);
-        background: var(--surface-2);
-        color: var(--text-2);
-        border-radius: var(--radius);
-        padding: 8px 12px;
-        font-size: 14px;
-        font-weight: 600;
-      }
-      .auth-tab.active {
-        background: var(--ink);
-        color: var(--ink-inv);
-        border-color: var(--ink);
-      }
-      @media (max-width: 700px) {
-        .auth-layout {
-          grid-template-columns: 1fr;
-        }
-        .auth-brand {
-          display: none;
-        }
-      }
-    </style>
+    <link rel="stylesheet" href="{% static 'users/css/auth_pages.css' %}" />
   </head>
   <body>
-    <div class="auth-layout">
-      <div class="auth-brand">
-        <a class="auth-brand-logo" href="/">Event<span>ify</span></a>
-        <div class="auth-brand-content">
-          <h2>Your events,<br />perfectly organized</h2>
-          <p>
-            Connect with top vendors, manage bookings, and bring your vision to
-            life with Eventify.
-          </p>
-          <div class="auth-brand-stat">
-            <div><strong>1,240</strong><span>Clients</span></div>
-            <div><strong>310</strong><span>Vendors</span></div>
-            <div><strong>890</strong><span>Events</span></div>
-          </div>
-        </div>
-        <p
-          style="
-            color: rgba(255, 255, 255, 0.25);
-            font-size: 12px;
-            position: relative;
-          "
-        >
-          © 2026 Eventify
-        </p>
-      </div>
-
-      <div class="auth-form-side">
-        <section class="card auth-card">
+    <main class="page-card">
           <h1>Welcome back</h1>
           <p class="subtitle">Sign in to your Eventify account.</p>
 
@@ -213,7 +67,7 @@
                 required
               />
             </div>
-            <div class="row" style="margin-bottom: 16px">
+            <div class="row auth-row-utility">
               <label class="remember" for="client-remember">
                 <input id="client-remember" type="checkbox" /> Remember me
               </label>
@@ -230,9 +84,7 @@
 
             <p class="status-text"></p>
           </form>
-        </section>
-      </div>
-    </div>
+    </main>
     <script src="{% static 'users/js/login.js' %}"></script>
   </body>
 </html>
