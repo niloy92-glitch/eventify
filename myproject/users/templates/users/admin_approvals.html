@@ -1,0 +1,46 @@
+{% extends 'users/admin_base.html' %}
+
+{% block title %}Admin Approvals{% endblock %}
+
+{% block content %}
+<section class="card page-head">
+  <h1>Approvals</h1>
+  <p class="muted">Review vendor and service requests.</p>
+</section>
+
+<section class="card">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Company Name</th>
+          <th>Service Name</th>
+          <th>Type</th>
+          <th>Price</th>
+          <th>Request Timestamp</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+          <tr data-approval-row>
+            <td>{{ row.company_name }}</td>
+            <td>{{ row.service_name }}</td>
+            <td>{{ row.service_type }}</td>
+            <td>{{ row.price }}</td>
+            <td>{{ row.request_timestamp }}</td>
+            <td class="actions-cell">
+              <button type="button" class="btn btn-primary" data-approval-action="approve">Approve</button>
+              <button type="button" class="btn danger-btn" data-approval-action="reject">Reject</button>
+            </td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="6">No approval requests available.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

@@ -47,5 +47,10 @@ urlpatterns = [
         name="password_reset_complete",
     ),
     path("dashboard/<str:role>/", views.dashboard, name="dashboard"),
+    path("admin/dashboard/", views.admin_dashboard_view, name="admin_dashboard"),
+    path("admin/users/", views.admin_users_view, name="admin_users"),
+    path("admin/approvals/", views.admin_approvals_view, name="admin_approvals"),
+    path("admin/activity-logs/", views.admin_activity_logs_view, name="admin_activity_logs"),
+    path("admin/profile/", views.admin_profile_view, name="admin_profile"),
     path("logout/", views.logout_view, name="logout"),
 ]

@@ -1,0 +1,41 @@
+{% extends 'users/admin_base.html' %}
+
+{% block title %}Admin Profile{% endblock %}
+
+{% block content %}
+<section class="card page-head profile-head">
+  <h1>Admin Profile</h1>
+  <a class="btn" href="{% url 'users:admin_dashboard' %}">Back to Dashboard</a>
+</section>
+
+<section class="card profile-grid">
+  <article>
+    <p class="profile-label">Full Name</p>
+    <p class="profile-value">{{ user_name }}</p>
+  </article>
+  <article>
+    <p class="profile-label">Email</p>
+    <p class="profile-value">{{ email }}</p>
+  </article>
+  <article>
+    <p class="profile-label">First Name</p>
+    <p class="profile-value">{{ first_name|default:'Not provided' }}</p>
+  </article>
+  <article>
+    <p class="profile-label">Last Name</p>
+    <p class="profile-value">{{ last_name|default:'Not provided' }}</p>
+  </article>
+  <article>
+    <p class="profile-label">Phone</p>
+    <p class="profile-value">{{ phone }}</p>
+  </article>
+  <article>
+    <p class="profile-label">Address</p>
+    <p class="profile-value">{{ address }}</p>
+  </article>
+  <article>
+    <p class="profile-label">Joined On</p>
+    <p class="profile-value">{{ join_date|date:'d M Y, h:i A' }}</p>
+  </article>
+</section>
+{% endblock %}

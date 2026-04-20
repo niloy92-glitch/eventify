@@ -1,20 +1,76 @@
-{% load static %}
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Admin Dashboard</title>
-    <link rel="stylesheet" href="{% static 'users/css/dashboard.css' %}" />
-  </head>
-  <body>
-    <main>
-      <h1>hello {{ user_name }}, {{ role }}!</h1>
-      <p>{{ role }} access is active for {{ user_name }}.</p>
-      <form action="{% url 'users:logout' %}" method="post">
-        {% csrf_token %}
-        <button type="submit">Logout</button>
-      </form>
-    </main>
-  </body>
-</html>
+{% extends 'users/admin_base.html' %}
+
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block content %}
+<section class="card page-head">
+  <h1>Dashboard</h1>
+  <p class="muted">A quick overview of users, services, and event performance.</p>
+</section>
+
+<section class="stats-grid">
+  <article class="card stat-card">
+    <h3>Total Users</h3>
+    <p class="stat-value">{{ stats.total_users }}</p>
+  </article>
+  <article class="card stat-card">
+    <h3>Vendors</h3>
+    <p class="stat-value">{{ stats.vendors }}</p>
+  </article>
+  <article class="card stat-card">
+    <h3>Admins</h3>
+    <p class="stat-value">{{ stats.admins }}</p>
+  </article>
+  <article class="card stat-card">
+    <h3>Services</h3>
+    <p class="stat-value">{{ stats.services }}</p>
+  </article>
+  <article class="card stat-card">
+    <h3>Events Running</h3>
+    <p class="stat-value">{{ stats.events_running }}</p>
+  </article>
+  <article class="card stat-card">
+    <h3>Events Upcoming</h3>
+    <p class="stat-value">{{ stats.events_upcoming }}</p>
+  </article>
+  <article class="card stat-card">
+    <h3>Events Canceled</h3>
+    <p class="stat-value">{{ stats.events_canceled }}</p>
+  </article>
+  <article class="card stat-card">
+    <h3>Events Completed</h3>
+    <p class="stat-value">{{ stats.events_completed }}</p>
+  </article>
+</section>
+
+<section class="card">
+  <div class="row-between section-head">
+    <h2>Recent Activities</h2>
+    <a class="btn" href="{% url 'users:admin_activity_logs' %}">Full Activity Logs</a>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Who</th>
+          <th>What</th>
+          <th>When</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in recent_activities %}
+          <tr>
+            <td>{{ row.actor }}</td>
+            <td>{{ row.action }}</td>
+            <td>{{ row.timestamp }}</td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="3">No recent activities found.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
