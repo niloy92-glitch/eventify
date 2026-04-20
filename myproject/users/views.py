@@ -21,6 +21,11 @@ from .services import (
     build_google_auth_url,
     create_user_from_registration,
     dashboard_context,
+    admin_activity_logs_data,
+    admin_approvals_data,
+    admin_base_context,
+    admin_dashboard_data,
+    admin_users_data,
     exchange_google_code_for_token,
     fetch_google_userinfo,
     google_oauth_configured,
@@ -288,7 +293,86 @@ def dashboard(request: HttpRequest, role: str) -> HttpResponse:
     current_role = normalize_role(getattr(request.user, "role", AUTH_DEFAULT_ROLE))
     if role != current_role:
         return redirect(role_dashboard_url(current_role))
+
+    if role == "admin":
+        return redirect("users:admin_dashboard")
+
     return render(request, f"users/dashboard_{role}.html", dashboard_context(request, role))
+
+
+@login_required(login_url="users:login")
+@require_GET
+def admin_dashboard_view(request: HttpRequest) -> HttpResponse:
+    if is_django_admin_user(request.user):
+        return redirect(DJANGO_ADMIN_URL)
+    if normalize_role(getattr(request.user, "role", AUTH_DEFAULT_ROLE)) != "admin":
+        return redirect(login_redirect_url(getattr(request.user, "role", AUTH_DEFAULT_ROLE)))
+
+    context = admin_base_context(request, "dashboard")
+    context.update(admin_dashboard_data())
+    return render(request, "users/dashboard_admin.html", context)
+
+
+@login_required(login_url="users:login")
+@require_GET
+def admin_users_view(request: HttpRequest) -> HttpResponse:
+    if is_django_admin_user(request.user):
+        return redirect(DJANGO_ADMIN_URL)
+    if normalize_role(getattr(request.user, "role", AUTH_DEFAULT_ROLE)) != "admin":
+        return redirect(login_redirect_url(getattr(request.user, "role", AUTH_DEFAULT_ROLE)))
+
+    context = admin_base_context(request, "users")
+    context.update(admin_users_data())
+    return render(request, "users/admin_users.html", context)
+
+
+@login_required(login_url="users:login")
+@require_GET
+def admin_approvals_view(request: HttpRequest) -> HttpResponse:
+    if is_django_admin_user(request.user):
+        return redirect(DJANGO_ADMIN_URL)
+    if normalize_role(getattr(request.user, "role", AUTH_DEFAULT_ROLE)) != "admin":
+        return redirect(login_redirect_url(getattr(request.user, "role", AUTH_DEFAULT_ROLE)))
+
+    context = admin_base_context(request, "approvals")
+    context.update(admin_approvals_data())
+    return render(request, "users/admin_approvals.html", context)
+
+
+@login_required(login_url="users:login")
+@require_GET
+def admin_activity_logs_view(request: HttpRequest) -> HttpResponse:
+    if is_django_admin_user(request.user):
+        return redirect(DJANGO_ADMIN_URL)
+    if normalize_role(getattr(request.user, "role", AUTH_DEFAULT_ROLE)) != "admin":
+        return redirect(login_redirect_url(getattr(request.user, "role", AUTH_DEFAULT_ROLE)))
+
+    page_number = request.GET.get("page", "1")
+    context = admin_base_context(request, "activity_logs")
+    context.update(admin_activity_logs_data(page_number=page_number))
+    return render(request, "users/admin_activity_logs.html", context)
+
+
+@login_required(login_url="users:login")
+@require_GET
+def admin_profile_view(request: HttpRequest) -> HttpResponse:
+    if is_django_admin_user(request.user):
+        return redirect(DJANGO_ADMIN_URL)
+    if normalize_role(getattr(request.user, "role", AUTH_DEFAULT_ROLE)) != "admin":
+        return redirect(login_redirect_url(getattr(request.user, "role", AUTH_DEFAULT_ROLE)))
+
+    context = admin_base_context(request, "")
+    context.update(
+        {
+            "email": request.user.email,
+            "first_name": request.user.first_name,
+            "last_name": request.user.last_name,
+            "phone": request.user.phone or "Not provided",
+            "address": request.user.address or "Not provided",
+            "join_date": request.user.date_joined,
+        }
+    )
+    return render(request, "users/admin_profile.html", context)
 
 
 @require_POST

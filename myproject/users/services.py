@@ -6,6 +6,7 @@ Google OAuth plumbing, email dispatch, and role helpers.
 """
 
 import logging
+from decimal import Decimal
 from urllib.parse import urlencode
 from urllib.parse import parse_qsl
 from urllib.parse import urlsplit
@@ -13,14 +14,18 @@ from urllib.parse import urlunsplit
 
 import requests
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
 from django.core import signing
+from django.core.paginator import Paginator
 from django.core.mail import send_mail
+from django.db.models import Count
 from django.http import HttpRequest
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django.db import transaction
 from django.utils.encoding import force_bytes
+from django.utils import timezone
 from django.utils.http import urlsafe_base64_encode
 
 
@@ -128,6 +133,215 @@ def dashboard_context(request: HttpRequest, role: str) -> dict:
     return {
         "role": role,
         "user_name": user_name,
+    }
+
+
+def _display_name(user) -> str:
+    return user.get_full_name().strip() or user.email
+
+
+def _dummy_count(seed: int, minimum: int, span: int) -> int:
+    return minimum + (seed % max(span, 1))
+
+
+def _dummy_service_name(seed: int) -> str:
+    service_pool = [
+        "Premium Photography",
+        "Deluxe Catering",
+        "Stage Lighting",
+        "Corporate Decor",
+        "Live Sound Setup",
+    ]
+    return service_pool[seed % len(service_pool)]
+
+
+def _dummy_service_type(seed: int) -> str:
+    type_pool = ["Photography", "Catering", "Audio", "Decor", "Logistics"]
+    return type_pool[seed % len(type_pool)]
+
+
+def _dummy_price(seed: int) -> str:
+    amount = Decimal(_dummy_count(seed, 5000, 12000))
+    return f"BDT {amount:,.0f}"
+
+
+def admin_base_context(request: HttpRequest, active_menu: str) -> dict:
+    user_name = _display_name(request.user)
+    initials = "".join(part[0] for part in user_name.split() if part).upper()[:2] or "AD"
+
+    nav_links = [
+        {
+            "label": "Dashboard",
+            "href": reverse("users:admin_dashboard"),
+            "active": active_menu == "dashboard",
+        },
+        {
+            "label": "Users",
+            "href": reverse("users:admin_users"),
+            "active": active_menu == "users",
+        },
+        {
+            "label": "Approvals",
+            "href": reverse("users:admin_approvals"),
+            "active": active_menu == "approvals",
+        },
+        {
+            "label": "Activity Logs",
+            "href": reverse("users:admin_activity_logs"),
+            "active": active_menu == "activity_logs",
+        },
+    ]
+
+    return {
+        "role": "admin",
+        "user_name": user_name,
+        "initials": initials,
+        "admin_nav_links": nav_links,
+        "admin_profile_url": reverse("users:admin_profile"),
+        "notification_items": [
+            "Two new vendor approvals are pending.",
+            "A new admin account was added.",
+            "Daily dashboard snapshot is ready.",
+        ],
+    }
+
+
+def admin_users_data() -> dict:
+    user_model = get_user_model()
+    queryset = user_model.objects.all().order_by("-date_joined")
+    total_users = queryset.count()
+
+    role_counts = {
+        row["role"]: row["count"]
+        for row in queryset.values("role").annotate(count=Count("id"))
+    }
+
+    rows = []
+    for user in queryset:
+        seed = int(user.pk or 0)
+        rows.append(
+            {
+                "id": user.pk,
+                "name": _display_name(user),
+                "email": user.email,
+                "role": user.role,
+                "join_date": timezone.localtime(user.date_joined).strftime("%d %b %Y"),
+                # Dummy fields until event/service models are available.
+                "event_count": _dummy_count(seed, 1, 10),
+                "service_count": _dummy_count(seed * 3, 0, 8),
+            }
+        )
+
+    return {
+        "rows": rows,
+        "total": total_users,
+        "clients": role_counts.get("client", 0),
+        "vendors": role_counts.get("vendor", 0),
+        "admins": role_counts.get("admin", 0),
+    }
+
+
+def admin_dashboard_data() -> dict:
+    user_data = admin_users_data()
+    total_users = user_data["total"]
+    vendors = user_data["vendors"]
+    admins = user_data["admins"]
+
+    # Event/service stats are dummy-backed while those models are not yet present.
+    services = max((vendors * 3) + (admins * 2), 12)
+    events_running = max(total_users // 4, 2)
+    events_upcoming = max(total_users // 3, 3)
+    events_canceled = max(total_users // 10, 1)
+    events_completed = max(total_users // 2, 5)
+
+    recent_activities = [
+        {
+            "actor": row["name"],
+            "action": f"Registered as {ROLE_LABELS.get(row['role'], 'User')}",
+            "timestamp": row["join_date"],
+        }
+        for row in user_data["rows"][:8]
+    ]
+
+    return {
+        "stats": {
+            "total_users": total_users,
+            "vendors": vendors,
+            "admins": admins,
+            "services": services,
+            "events_running": events_running,
+            "events_upcoming": events_upcoming,
+            "events_canceled": events_canceled,
+            "events_completed": events_completed,
+        },
+        "recent_activities": recent_activities,
+    }
+
+
+def admin_approvals_data() -> dict:
+    user_model = get_user_model()
+    vendors = user_model.objects.filter(role="vendor").order_by("-date_joined")
+
+    rows = []
+    for vendor in vendors:
+        seed = int(vendor.pk or 0)
+        rows.append(
+            {
+                "id": vendor.pk,
+                "company_name": vendor.company_name or _display_name(vendor),
+                "service_name": _dummy_service_name(seed),
+                "service_type": _dummy_service_type(seed),
+                "price": _dummy_price(seed),
+                "request_timestamp": timezone.localtime(vendor.date_joined).strftime("%d %b %Y, %I:%M %p"),
+            }
+        )
+
+    if not rows:
+        now = timezone.now()
+        for seed in range(1, 5):
+            rows.append(
+                {
+                    "id": seed,
+                    "company_name": f"Sample Vendor {seed}",
+                    "service_name": _dummy_service_name(seed),
+                    "service_type": _dummy_service_type(seed),
+                    "price": _dummy_price(seed),
+                    "request_timestamp": timezone.localtime(now).strftime("%d %b %Y, %I:%M %p"),
+                }
+            )
+
+    return {"rows": rows}
+
+
+def admin_activity_logs_data(page_number: int = 1, per_page: int = 12) -> dict:
+    user_data = admin_users_data()["rows"]
+    approval_rows = admin_approvals_data()["rows"]
+
+    logs = []
+    for row in user_data:
+        logs.append(
+            {
+                "actor": row["name"],
+                "activity": f"Created account ({ROLE_LABELS.get(row['role'], 'User')})",
+                "when": row["join_date"],
+            }
+        )
+
+    for row in approval_rows:
+        logs.append(
+            {
+                "actor": row["company_name"],
+                "activity": f"Submitted service approval for {row['service_name']}",
+                "when": row["request_timestamp"],
+            }
+        )
+
+    paginator = Paginator(logs, per_page)
+    page_obj = paginator.get_page(page_number)
+
+    return {
+        "page_obj": page_obj,
+        "logs": page_obj.object_list,
     }
 
 
