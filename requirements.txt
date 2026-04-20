@@ -1,8 +1,14 @@
 asgiref==3.11.1
+certifi==2026.2.25
+charset-normalizer==3.4.7
 dj-database-url==2.2.0
 Django==6.0.4
-psycopg[binary]==3.2.13
+idna==3.11
+psycopg==3.2.13
+psycopg-binary==3.2.13
 python-dotenv==1.1.1
 requests==2.32.3
 sqlparse==0.5.5
+typing_extensions==4.15.0
 tzdata==2026.1
+urllib3==2.6.3
