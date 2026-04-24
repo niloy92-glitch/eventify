@@ -14,8 +14,6 @@ urlpatterns = [
     path("auth/google/start/", views.google_oauth_start, name="google_oauth_start"),
     path("auth/google/callback/", views.google_oauth_callback, name="google_oauth_callback"),
     path("verify-email/<uidb64>/<token>/", views.verify_email, name="verify_email"),
-    path("api/login/", views.login_api, name="login_api"),
-    path("api/register/", views.register_api, name="register_api"),
     path(
         "password-reset/",
         auth_views.PasswordResetView.as_view(

@@ -113,11 +113,32 @@ def is_django_admin_user(user) -> bool:
 
 # ── Context builders ─────────────────────────────────────────────────────────
 
-def auth_context(request: HttpRequest, mode: str) -> dict:
-    active_role = normalize_role(request.GET.get("role"))
+def auth_context(
+    request: HttpRequest,
+    mode: str,
+    active_role: str | None = None,
+    form_values: dict | None = None,
+) -> dict:
+    selected_role = normalize_role(active_role or request.GET.get("role"))
+    default_form_values = {
+        "login_email": "",
+        "login_remember": False,
+        "client_first_name": "",
+        "client_last_name": "",
+        "client_email": "",
+        "vendor_company_name": "",
+        "vendor_email": "",
+        "admin_first_name": "",
+        "admin_last_name": "",
+        "admin_email": "",
+        "admin_referral_code": "",
+    }
+    if form_values:
+        default_form_values.update(form_values)
+
     return {
         "mode": mode,
-        "active_role": active_role,
+        "active_role": selected_role,
         "roles": [
             {"value": "client", "label": ROLE_LABELS["client"]},
             {"value": "vendor", "label": ROLE_LABELS["vendor"]},
@@ -125,6 +146,7 @@ def auth_context(request: HttpRequest, mode: str) -> dict:
         ],
         "role_labels": ROLE_LABELS,
         "google_label": "Continue with Google" if mode == "login" else "Sign up with Google",
+        "form_values": default_form_values,
     }
 
 
