@@ -1,0 +1,70 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}Client Dashboard{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="{% static 'users/css/style.css' %}" />
+    <link rel="stylesheet" href="{% static 'users/css/admin_dashboard.css' %}" />
+    {% block extra_head %}{% endblock %}
+  </head>
+  <body class="admin-body" data-require-role="client">
+    <div class="admin-layout">
+      <aside class="admin-sidebar" aria-label="Primary">
+        <a class="logo-link sidebar-logo" href="{% url 'users:client_dashboard' %}">Event<span>ify</span></a>
+
+        <a class="sidebar-user profile-card" href="{{ client_profile_url }}">
+          <div class="sidebar-user-avatar" aria-hidden="true">{{ initials }}</div>
+          <div>
+            <p class="sidebar-user-name">{{ user_name }}</p>
+            <p class="sidebar-user-role">Client</p>
+          </div>
+        </a>
+
+        <nav class="sidebar-nav nav-links" aria-label="Client navigation">
+          {% for link in client_nav_links %}
+            <a class="nav-link{% if link.active %} active{% endif %}" href="{{ link.href }}">{{ link.label }}</a>
+          {% endfor %}
+        </nav>
+
+        <div class="sidebar-bottom nav-tools">
+          <div class="notification-wrap">
+            <button
+              class="icon-btn"
+              type="button"
+              id="notification-toggle"
+              aria-haspopup="true"
+              aria-expanded="false"
+              aria-controls="notification-popover"
+            >
+              Notifications
+            </button>
+            <div class="notification-popover" id="notification-popover" hidden>
+              <p class="notification-title">Latest Alerts</p>
+              <ul>
+                {% for notification in notification_items %}
+                  <li>{{ notification }}</li>
+                {% endfor %}
+              </ul>
+            </div>
+          </div>
+
+          <form action="{% url 'users:logout' %}" method="post">
+            {% csrf_token %}
+            <button class="btn btn-accent sidebar-logout" type="submit">Logout</button>
+          </form>
+        </div>
+      </aside>
+
+      <main class="admin-main" role="main">
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+
+    <script src="{% static 'users/js/admin_dashboard.js' %}"></script>
+    {% block extra_scripts %}{% endblock %}
+  </body>
+</html>
