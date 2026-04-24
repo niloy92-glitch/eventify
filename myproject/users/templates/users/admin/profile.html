@@ -1,0 +1,35 @@
+{% extends 'users/admin/base.html' %}
+
+{% block title %}Admin Profile{% endblock %}
+
+{% block content %}
+<section class="card page-head">
+  <h1>Profile</h1>
+  <p class="muted">Your admin account information.</p>
+</section>
+
+<section class="card profile-card-panel">
+  <div class="profile-grid">
+    <div>
+      <div class="profile-label">Email</div>
+      <div class="profile-value">{{ email }}</div>
+    </div>
+    <div>
+      <div class="profile-label">Name</div>
+      <div class="profile-value">{{ first_name }} {{ last_name }}</div>
+    </div>
+    <div>
+      <div class="profile-label">Phone</div>
+      <div class="profile-value">{{ phone }}</div>
+    </div>
+    <div>
+      <div class="profile-label">Address</div>
+      <div class="profile-value">{{ address }}</div>
+    </div>
+    <div>
+      <div class="profile-label">Joined</div>
+      <div class="profile-value">{{ join_date }}</div>
+    </div>
+  </div>
+</section>
+{% endblock %}

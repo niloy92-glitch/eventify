@@ -125,6 +125,29 @@
   letter-spacing: -0.02em;
 }
 
+.users-page-head {
+  height: 140px;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+.users-page-head-inner {
+  width: 100%;
+  gap: 12px;
+  align-items: center;
+}
+
+.page-notice {
+  margin-top: 10px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.page-notice-success { color: #15803d; }
+.page-notice-error { color: #b91c1c; }
+.page-notice-info { color: #0f766e; }
+
 .section-head h2 {
   font-size: 1.2rem;
 }
@@ -179,6 +202,14 @@
   flex-wrap: wrap;
 }
 
+.users-table-wrap {
+  overflow-x: auto;
+}
+
+.users-table-wrap table {
+  min-width: 1080px;
+}
+
 .modal {
   position: fixed;
   inset: 0;
@@ -195,7 +226,7 @@
 }
 
 .modal-panel {
-  width: min(520px, 100%);
+  width: min(760px, 100%);
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
@@ -213,6 +244,12 @@
 .modal-form {
   display: grid;
   gap: 8px;
+}
+
+#edit-user-address {
+  width: 100%;
+  height: 96px;
+  resize: none;
 }
 
 .modal-actions {
@@ -251,6 +288,10 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
+}
+
+.profile-card-panel {
+  padding: 18px;
 }
 
 .profile-label {
@@ -292,6 +333,11 @@
   .profile-grid {
     grid-template-columns: 1fr;
   }
+
+  .users-page-head {
+    height: auto;
+    overflow: visible;
+  }
 }
 
 @media (max-width: 560px) {
@@ -301,5 +347,10 @@
 
   .stats-grid {
     grid-template-columns: 1fr;
+  }
+
+  .users-page-head {
+    height: auto;
+    overflow: visible;
   }
 }

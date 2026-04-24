@@ -5,11 +5,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Vendor Dashboard</title>
+    <link rel="stylesheet" href="{% static 'users/css/style.css' %}" />
     <link rel="stylesheet" href="{% static 'users/css/dashboard.css' %}" />
   </head>
   <body>
     <main>
-      <h1>hello {{ user_name }},  {{ role }}!</h1>
+      <h1>hello {{ user_name }}, {{ role }}!</h1>
       <p>{{ role }} access is active for {{ user_name }}.</p>
       <form action="{% url 'users:logout' %}" method="post">
         {% csrf_token %}

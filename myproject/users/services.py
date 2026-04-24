@@ -67,6 +67,10 @@ AUTH_MESSAGE_KEYS = {
     "oauth_failed": "OAUTH_FAILED",
     "password_reset_done": "PASSWORD_RESET_DONE",
     "password_reset_complete": "PASSWORD_RESET_COMPLETE",
+    "user_updated": "USER_UPDATED",
+    "user_deleted": "USER_DELETED",
+    "user_update_failed": "USER_UPDATE_FAILED",
+    "user_delete_failed": "USER_DELETE_FAILED",
 }
 
 AUTH_MESSAGES = {
@@ -75,6 +79,10 @@ AUTH_MESSAGES = {
     "OAUTH_FAILED": ("error", "Google sign in failed. Please try again."),
     "PASSWORD_RESET_DONE": ("success", "If your email exists, a reset link has been sent."),
     "PASSWORD_RESET_COMPLETE": ("success", "Password reset successful. Please sign in."),
+    "USER_UPDATED": ("success", "User updated successfully."),
+    "USER_DELETED": ("success", "User deleted successfully."),
+    "USER_UPDATE_FAILED": ("error", "User update failed."),
+    "USER_DELETE_FAILED": ("error", "User delete failed."),
 }
 
 
@@ -327,7 +335,7 @@ def client_dashboard_data(request: HttpRequest) -> dict:
 
 def admin_users_data() -> dict:
     user_model = get_user_model()
-    queryset = user_model.objects.all().order_by("-date_joined")
+    queryset = user_model.objects.filter(is_superuser=False).order_by("-date_joined")
     total_users = queryset.count()
 
     role_counts = {
@@ -337,17 +345,19 @@ def admin_users_data() -> dict:
 
     rows = []
     for user in queryset:
-        seed = int(user.pk or 0)
         rows.append(
             {
                 "id": user.pk,
                 "name": _display_name(user),
+                "first_name": user.first_name,
+                "last_name": user.last_name,
                 "email": user.email,
                 "role": user.role,
+                "company_name": user.company_name or "Not provided",
+                "phone": user.phone or "Not provided",
+                "address": user.address or "Not provided",
+                "email_verified": user.email_verified,
                 "join_date": timezone.localtime(user.date_joined).strftime("%d %b %Y"),
-                # Dummy fields until event/service models are available.
-                "event_count": _dummy_count(seed, 1, 10),
-                "service_count": _dummy_count(seed * 3, 0, 8),
             }
         )
 

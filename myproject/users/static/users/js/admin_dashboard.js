@@ -67,16 +67,35 @@
   function initUserModals() {
     const editModal = document.getElementById("edit-user-modal");
     const deleteModal = document.getElementById("delete-user-modal");
-    const editName = document.getElementById("edit-user-name");
+    const editId = document.getElementById("edit-user-id");
+    const editFirstName = document.getElementById("edit-user-first-name");
+    const editLastName = document.getElementById("edit-user-last-name");
     const editEmail = document.getElementById("edit-user-email");
     const editRole = document.getElementById("edit-user-role");
+    const editCompanyName = document.getElementById("edit-user-company-name");
+    const editPhone = document.getElementById("edit-user-phone");
+    const editAddress = document.getElementById("edit-user-address");
+    const editEmailVerified = document.getElementById("edit-user-email-verified");
+    const editForm = document.getElementById("edit-user-form");
+    const deleteForm = document.getElementById("delete-user-form");
     const deleteText = document.getElementById("delete-user-text");
 
     document.querySelectorAll("[data-open-edit]").forEach(function (button) {
       button.addEventListener("click", function () {
-        if (editName) editName.value = button.getAttribute("data-name") || "";
+        if (editId) editId.value = button.getAttribute("data-user-id") || "";
+        if (editFirstName) editFirstName.value = button.getAttribute("data-first-name") || "";
+        if (editLastName) editLastName.value = button.getAttribute("data-last-name") || "";
         if (editEmail) editEmail.value = button.getAttribute("data-email") || "";
         if (editRole) editRole.value = button.getAttribute("data-role") || "client";
+        if (editCompanyName) editCompanyName.value = button.getAttribute("data-company-name") || "";
+        if (editPhone) editPhone.value = button.getAttribute("data-phone") || "";
+        if (editAddress) editAddress.value = button.getAttribute("data-address") || "";
+        if (editEmailVerified) {
+          editEmailVerified.checked = button.getAttribute("data-email-verified") === "true";
+        }
+        if (editForm) {
+          editForm.action = button.getAttribute("data-update-url") || "#";
+        }
         openModal(editModal);
       });
     });
@@ -86,6 +105,9 @@
         const name = button.getAttribute("data-name") || "this user";
         if (deleteText) {
           deleteText.textContent = "Are you sure you want to delete " + name + "?";
+        }
+        if (deleteForm) {
+          deleteForm.action = button.getAttribute("data-delete-url") || "#";
         }
         openModal(deleteModal);
       });
@@ -104,20 +126,7 @@
       });
     });
 
-    const confirmDelete = document.querySelector("[data-confirm-delete]");
-    if (confirmDelete) {
-      confirmDelete.addEventListener("click", function () {
-        closeModal(deleteModal);
-      });
-    }
-
-    const editForm = editModal ? editModal.querySelector("form") : null;
-    if (editForm) {
-      editForm.addEventListener("submit", function (event) {
-        event.preventDefault();
-        closeModal(editModal);
-      });
-    }
+    // Keep native form submit behavior for real backend update/delete actions.
   }
 
   function initApprovalActions() {
@@ -139,6 +148,9 @@
   }
 
   document.addEventListener("DOMContentLoaded", function () {
+    if (window.EventifyToast) {
+      window.EventifyToast.fromQuery();
+    }
     togglePopover();
     initFilterButtons();
     initUserModals();

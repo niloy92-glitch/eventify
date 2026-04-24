@@ -157,6 +157,93 @@ class AuthFlowTests(TestCase):
 		self.assertEqual(response.status_code, 302)
 		self.assertIn(reverse("users:login"), response["Location"])
 
+	def test_admin_users_page_shows_real_user_data(self):
+		admin_user = User.objects.create_user(
+			email="adminpanel@example.com",
+			password="secret12345",
+			role="admin",
+			email_verified=True,
+			first_name="Admin",
+			last_name="Panel",
+		)
+		User.objects.create_user(
+			email="realclient@example.com",
+			password="secret12345",
+			role="client",
+			email_verified=True,
+			first_name="Real",
+			last_name="Client",
+		)
+		self.client.force_login(admin_user)
+
+		response = self.client.get(reverse("users:admin_users"))
+		self.assertEqual(response.status_code, 200)
+		self.assertContains(response, "realclient@example.com")
+		self.assertNotContains(response, "event_count")
+		self.assertNotContains(response, "service_count")
+
+	def test_admin_user_update_persists_to_database(self):
+		admin_user = User.objects.create_user(
+			email="adminpanel@example.com",
+			password="secret12345",
+			role="admin",
+			email_verified=True,
+			first_name="Admin",
+			last_name="Panel",
+		)
+		target_user = User.objects.create_user(
+			email="editable@example.com",
+			password="secret12345",
+			role="client",
+			email_verified=False,
+			first_name="Old",
+			last_name="Name",
+		)
+		self.client.force_login(admin_user)
+
+		response = self.client.post(
+			reverse("users:admin_user_update", args=[target_user.pk]),
+			{
+				"first_name": "New",
+				"last_name": "Name",
+				"email": "editable-updated@example.com",
+				"role": "vendor",
+				"company_name": "New Co",
+				"phone": "0123456789",
+				"address": "Dhaka",
+				"email_verified": "on",
+			},
+		)
+
+		self.assertEqual(response.status_code, 302)
+		target_user.refresh_from_db()
+		self.assertEqual(target_user.first_name, "New")
+		self.assertEqual(target_user.email, "editable-updated@example.com")
+		self.assertEqual(target_user.role, "vendor")
+		self.assertEqual(target_user.company_name, "New Co")
+		self.assertTrue(target_user.email_verified)
+
+	def test_admin_user_delete_removes_database_row(self):
+		admin_user = User.objects.create_user(
+			email="adminpanel@example.com",
+			password="secret12345",
+			role="admin",
+			email_verified=True,
+			first_name="Admin",
+			last_name="Panel",
+		)
+		target_user = User.objects.create_user(
+			email="deleteme@example.com",
+			password="secret12345",
+			role="client",
+			email_verified=True,
+		)
+		self.client.force_login(admin_user)
+
+		response = self.client.post(reverse("users:admin_user_delete", args=[target_user.pk]))
+		self.assertEqual(response.status_code, 302)
+		self.assertFalse(User.objects.filter(pk=target_user.pk).exists())
+
 	def test_client_dashboard_page_loads_for_client_user(self):
 		user = User.objects.create_user(
 			email="clientdash@example.com",

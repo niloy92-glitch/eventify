@@ -142,3 +142,55 @@ class RegisterForm(forms.Form):
 
         cleaned_data["role"] = role
         return cleaned_data
+
+
+class AdminUserForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = [
+            "first_name",
+            "last_name",
+            "email",
+            "company_name",
+            "phone",
+            "address",
+            "email_verified",
+        ]
+
+    def clean_email(self):
+        email = self.cleaned_data["email"].strip().lower()
+        existing_user = User.objects.filter(email__iexact=email).exclude(pk=self.instance.pk).first()
+        if existing_user:
+            raise forms.ValidationError("An account with that email already exists.")
+        return email
+
+    def clean_first_name(self):
+        return self.cleaned_data.get("first_name", "").strip()
+
+    def clean_last_name(self):
+        return self.cleaned_data.get("last_name", "").strip()
+
+    def clean_company_name(self):
+        return self.cleaned_data.get("company_name", "").strip()
+
+    def clean_phone(self):
+        return self.cleaned_data.get("phone", "").strip()
+
+    def clean_address(self):
+        return self.cleaned_data.get("address", "").strip()
+
+    def clean(self):
+        cleaned_data = super().clean()
+        # Role is view-only in admin edit; always validate against stored value.
+        role = normalize_role(getattr(self.instance, "role", ""))
+
+        if role in {"client", "admin"}:
+            if not cleaned_data.get("first_name"):
+                self.add_error("first_name", "First name is required.")
+            if not cleaned_data.get("last_name"):
+                self.add_error("last_name", "Last name is required.")
+
+        if role == "vendor" and not cleaned_data.get("company_name"):
+            self.add_error("company_name", "Company name is required.")
+
+        return cleaned_data
