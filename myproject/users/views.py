@@ -25,6 +25,8 @@ from .services import (
     admin_base_context,
     admin_dashboard_data,
     admin_users_data,
+    client_base_context,
+    client_dashboard_data,
     exchange_google_code_for_token,
     fetch_google_userinfo,
     google_oauth_configured,
@@ -338,7 +340,66 @@ def dashboard(request: HttpRequest, role: str) -> HttpResponse:
     if role == "admin":
         return redirect("users:admin_dashboard")
 
+    if role == "client":
+        return redirect("users:client_dashboard")
+
     return render(request, f"users/dashboard_{role}.html", dashboard_context(request, role))
+
+
+def _client_access_redirect(request: HttpRequest):
+    if is_django_admin_user(request.user):
+        return redirect(DJANGO_ADMIN_URL)
+    if normalize_role(getattr(request.user, "role", AUTH_DEFAULT_ROLE)) != "client":
+        return redirect(login_redirect_url(getattr(request.user, "role", AUTH_DEFAULT_ROLE)))
+    return None
+
+
+@login_required(login_url="users:login")
+@require_GET
+def client_dashboard_view(request: HttpRequest) -> HttpResponse:
+    redirect_response = _client_access_redirect(request)
+    if redirect_response is not None:
+        return redirect_response
+
+    context = client_base_context(request, "dashboard")
+    context.update(client_dashboard_data(request))
+    return render(request, "users/dashboard_client.html", context)
+
+
+@login_required(login_url="users:login")
+@require_GET
+def client_my_events_view(request: HttpRequest) -> HttpResponse:
+    redirect_response = _client_access_redirect(request)
+    if redirect_response is not None:
+        return redirect_response
+
+    context = client_base_context(request, "my_events")
+    context.update({"page_name": "My Events"})
+    return render(request, "users/client_placeholder.html", context)
+
+
+@login_required(login_url="users:login")
+@require_GET
+def client_messages_view(request: HttpRequest) -> HttpResponse:
+    redirect_response = _client_access_redirect(request)
+    if redirect_response is not None:
+        return redirect_response
+
+    context = client_base_context(request, "messages")
+    context.update({"page_name": "Messages"})
+    return render(request, "users/client_placeholder.html", context)
+
+
+@login_required(login_url="users:login")
+@require_GET
+def client_profile_view(request: HttpRequest) -> HttpResponse:
+    redirect_response = _client_access_redirect(request)
+    if redirect_response is not None:
+        return redirect_response
+
+    context = client_base_context(request, "profile")
+    context.update({"page_name": "Profile"})
+    return render(request, "users/client_placeholder.html", context)
 
 
 @login_required(login_url="users:login")

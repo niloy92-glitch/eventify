@@ -156,3 +156,32 @@ class AuthFlowTests(TestCase):
 		response = self.client.get(reverse("users:google_oauth_callback"), {"error": "access_denied"})
 		self.assertEqual(response.status_code, 302)
 		self.assertIn(reverse("users:login"), response["Location"])
+
+	def test_client_dashboard_page_loads_for_client_user(self):
+		user = User.objects.create_user(
+			email="clientdash@example.com",
+			password="secret12345",
+			role="client",
+			email_verified=True,
+			first_name="Client",
+			last_name="User",
+		)
+		self.client.force_login(user)
+
+		response = self.client.get(reverse("users:client_dashboard"))
+		self.assertEqual(response.status_code, 200)
+		self.assertContains(response, "Welcome to Dashboard")
+		self.assertContains(response, "My Events")
+
+	def test_client_placeholder_page_loads_for_client_user(self):
+		user = User.objects.create_user(
+			email="clientmenu@example.com",
+			password="secret12345",
+			role="client",
+			email_verified=True,
+		)
+		self.client.force_login(user)
+
+		response = self.client.get(reverse("users:client_messages"))
+		self.assertEqual(response.status_code, 200)
+		self.assertContains(response, "Messages")

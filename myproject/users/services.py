@@ -6,6 +6,7 @@ Google OAuth plumbing, email dispatch, and role helpers.
 """
 
 import logging
+from datetime import timedelta
 from decimal import Decimal
 from urllib.parse import urlencode
 from urllib.parse import parse_qsl
@@ -225,6 +226,102 @@ def admin_base_context(request: HttpRequest, active_menu: str) -> dict:
             "A new admin account was added.",
             "Daily dashboard snapshot is ready.",
         ],
+    }
+
+
+def _special_day_label(today) -> str:
+    special_days = {
+        (1, 1): "New Year's Day",
+        (3, 8): "International Women's Day",
+        (3, 26): "Independence Day",
+        (12, 16): "Victory Day",
+    }
+    return special_days.get((today.month, today.day), "No special observance today")
+
+
+def client_base_context(request: HttpRequest, active_menu: str) -> dict:
+    user_name = _display_name(request.user)
+    initials = "".join(part[0] for part in user_name.split() if part).upper()[:2] or "CL"
+
+    nav_links = [
+        {
+            "label": "Dashboard",
+            "href": reverse("users:client_dashboard"),
+            "active": active_menu == "dashboard",
+        },
+        {
+            "label": "My Events",
+            "href": reverse("users:client_my_events"),
+            "active": active_menu == "my_events",
+        },
+        {
+            "label": "Messages",
+            "href": reverse("users:client_messages"),
+            "active": active_menu == "messages",
+        },
+        {
+            "label": "Profile",
+            "href": reverse("users:client_profile"),
+            "active": active_menu == "profile",
+        },
+    ]
+
+    return {
+        "role": "client",
+        "user_name": user_name,
+        "initials": initials,
+        "client_nav_links": nav_links,
+        "client_profile_url": reverse("users:client_profile"),
+        "notification_items": [
+            "A vendor sent you a quote update.",
+            "One of your events starts this week.",
+            "Reminder: confirm event checklist items.",
+        ],
+    }
+
+
+def client_dashboard_data(request: HttpRequest) -> dict:
+    today = timezone.localdate()
+    seed = int(getattr(request.user, "pk", 1) or 1)
+
+    total_events = max(5, (seed % 7) + 6)
+    ongoing_events = 1
+    upcoming_events = max(2, total_events // 2)
+    canceled_events = max(1, total_events // 6)
+    completed_events = max(1, total_events - upcoming_events - ongoing_events - canceled_events)
+    total_events = upcoming_events + ongoing_events + canceled_events + completed_events
+
+    upcoming_list = []
+    event_names = [
+        "Annual Family Meetup",
+        "Office Celebration",
+        "Cultural Night",
+        "Birthday Gathering",
+        "Wedding Reception",
+    ]
+    locations = ["Dhaka Club", "Banani Hall", "Gulshan Venue", "Dhanmondi Center", "Bashundhara Hall"]
+
+    for index in range(min(5, upcoming_events)):
+        event_date = today + timedelta(days=index + 1)
+        upcoming_list.append(
+            {
+                "name": event_names[index % len(event_names)],
+                "date": event_date.strftime("%A, %B %d %Y"),
+                "location": locations[index % len(locations)],
+            }
+        )
+
+    return {
+        "today_label": today.strftime("%A, %B %d %Y"),
+        "special_day_label": _special_day_label(today),
+        "stats": {
+            "total": total_events,
+            "upcoming": upcoming_events,
+            "ongoing": ongoing_events,
+            "canceled": canceled_events,
+            "completed": completed_events,
+        },
+        "upcoming_events": upcoming_list,
     }
 
 

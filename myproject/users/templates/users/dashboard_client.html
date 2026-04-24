@@ -1,20 +1,76 @@
-{% load static %}
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Client Dashboard</title>
-    <link rel="stylesheet" href="{% static 'users/css/dashboard.css' %}" />
-  </head>
-  <body>
-    <main>
-      <h1>hello {{ user_name }}, {{ role }}!</h1>
-      <p>{{ role }} access is active for {{ user_name }}.</p>
-      <form action="{% url 'users:logout' %}" method="post">
-        {% csrf_token %}
-        <button type="submit">Logout</button>
-      </form>
-    </main>
-  </body>
-</html>
+{% extends 'users/client_base.html' %}
+
+{% block title %}Client Dashboard{% endblock %}
+
+{% block content %}
+<section class="card page-head">
+  <div class="row-between">
+    <div>
+      <h1>Hello {{ user_name }}! Welcome to Dashboard</h1>
+    </div>
+    <div style="text-align: right;">
+      <p class="muted">{{ today_label }}</p>
+      <p class="muted">Special day: {{ special_day_label }}</p>
+    </div>
+  </div>
+</section>
+
+<section class="card">
+  <div class="row-between section-head" style="margin-bottom: 1rem;">
+    <h2>Event Stats</h2>
+    <a class="btn" href="{% url 'users:client_my_events' %}">Create Event</a>
+  </div>
+  <div class="stats-grid">
+    <article class="card stat-card">
+      <h3>Total Events</h3>
+      <p class="stat-value">{{ stats.total }}</p>
+    </article>
+    <article class="card stat-card">
+      <h3>Upcoming</h3>
+      <p class="stat-value">{{ stats.upcoming }}</p>
+    </article>
+    <article class="card stat-card">
+      <h3>Ongoing (Today)</h3>
+      <p class="stat-value">{{ stats.ongoing }}</p>
+    </article>
+    <article class="card stat-card">
+      <h3>Canceled</h3>
+      <p class="stat-value">{{ stats.canceled }}</p>
+    </article>
+    <article class="card stat-card">
+      <h3>Completed</h3>
+      <p class="stat-value">{{ stats.completed }}</p>
+    </article>
+  </div>
+</section>
+
+<section class="card">
+  <div class="row-between section-head">
+    <h2>Upcoming Events</h2>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Event</th>
+          <th>Date</th>
+          <th>Location</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for event in upcoming_events %}
+          <tr>
+            <td>{{ event.name }}</td>
+            <td>{{ event.date }}</td>
+            <td>{{ event.location }}</td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="3">No upcoming events found.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
