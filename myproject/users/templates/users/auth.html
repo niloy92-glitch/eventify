@@ -98,8 +98,8 @@
           <form
             id="auth-form"
             data-mode="login"
-            data-login-url="{% url 'users:login_api' %}"
-            data-register-url="{% url 'users:register_api' %}"
+            method="post"
+            action="{% url 'users:login' %}?role={{ active_role }}"
           >
             {% csrf_token %}
             <input
@@ -113,7 +113,9 @@
               <label for="auth-email">Email</label>
               <input
                 id="auth-email"
+                name="email"
                 type="email"
+                value="{{ form_values.login_email }}"
                 placeholder="Enter email"
                 autocomplete="email"
                 required
@@ -124,6 +126,7 @@
               <label for="auth-password">Password</label>
               <input
                 id="auth-password"
+                name="password"
                 type="password"
                 placeholder="Enter password"
                 autocomplete="current-password"
@@ -136,7 +139,7 @@
                 class="remember remember-no-margin"
                 for="auth-remember"
               >
-                <input id="auth-remember" type="checkbox" /> Remember me
+                <input id="auth-remember" name="remember" type="checkbox" {% if form_values.login_remember %}checked{% endif %} /> Remember me
               </label>
               <a class="muted" href="{% url 'users:password_reset' %}">Forgot password?</a>
             </div>
@@ -149,7 +152,7 @@
                 <span>{{ google_label }}</span>
               </button>
             </div>
-            <p class="status-text" aria-live="polite"></p>
+            <p class="status-text" aria-live="polite"{% if status_level == 'error' %} style="color: var(--red);"{% elif status_level == 'success' %} style="color: var(--teal);"{% endif %}>{{ status_message }}</p>
             <p class="auth-footer">
               <a
                 id="auth-role-link"
@@ -162,8 +165,8 @@
           <form
             id="auth-form"
             data-mode="register"
-            data-login-url="{% url 'users:login_api' %}"
-            data-register-url="{% url 'users:register_api' %}"
+            method="post"
+            action="{% url 'users:register' %}?role={{ active_role }}"
           >
             {% csrf_token %}
             <input
@@ -182,7 +185,9 @@
                   <label for="client-first-name">First name</label>
                   <input
                     id="client-first-name"
+                    name="client_first_name"
                     type="text"
+                    value="{{ form_values.client_first_name }}"
                     placeholder="First name"
                     autocomplete="given-name"
                   />
@@ -191,7 +196,9 @@
                   <label for="client-last-name">Last name</label>
                   <input
                     id="client-last-name"
+                    name="client_last_name"
                     type="text"
+                    value="{{ form_values.client_last_name }}"
                     placeholder="Last name"
                     autocomplete="family-name"
                   />
@@ -201,7 +208,9 @@
                 <label for="client-email">Email</label>
                 <input
                   id="client-email"
+                  name="client_email"
                   type="email"
+                  value="{{ form_values.client_email }}"
                   placeholder="Enter email"
                   autocomplete="email"
                 />
@@ -211,6 +220,7 @@
                   <label for="client-password">Password</label>
                   <input
                     id="client-password"
+                    name="client_password"
                     type="password"
                     placeholder="Create password"
                     autocomplete="new-password"
@@ -220,6 +230,7 @@
                   <label for="client-confirm-password">Confirm password</label>
                   <input
                     id="client-confirm-password"
+                    name="client_confirm_password"
                     type="password"
                     placeholder="Confirm password"
                     autocomplete="new-password"
@@ -236,7 +247,9 @@
                 <label for="vendor-company-name">Company name</label>
                 <input
                   id="vendor-company-name"
+                  name="vendor_company_name"
                   type="text"
+                  value="{{ form_values.vendor_company_name }}"
                   placeholder="Company name"
                   autocomplete="organization"
                 />
@@ -245,7 +258,9 @@
                 <label for="vendor-email">Email</label>
                 <input
                   id="vendor-email"
+                  name="vendor_email"
                   type="email"
+                  value="{{ form_values.vendor_email }}"
                   placeholder="Enter email"
                   autocomplete="email"
                 />
@@ -255,6 +270,7 @@
                   <label for="vendor-password">Password</label>
                   <input
                     id="vendor-password"
+                    name="vendor_password"
                     type="password"
                     placeholder="Create password"
                     autocomplete="new-password"
@@ -264,6 +280,7 @@
                   <label for="vendor-confirm-password">Confirm password</label>
                   <input
                     id="vendor-confirm-password"
+                    name="vendor_confirm_password"
                     type="password"
                     placeholder="Confirm password"
                     autocomplete="new-password"
@@ -281,7 +298,9 @@
                   <label for="admin-first-name">First name</label>
                   <input
                     id="admin-first-name"
+                    name="admin_first_name"
                     type="text"
+                    value="{{ form_values.admin_first_name }}"
                     placeholder="First name"
                     autocomplete="given-name"
                   />
@@ -290,7 +309,9 @@
                   <label for="admin-last-name">Last name</label>
                   <input
                     id="admin-last-name"
+                    name="admin_last_name"
                     type="text"
+                    value="{{ form_values.admin_last_name }}"
                     placeholder="Last name"
                     autocomplete="family-name"
                   />
@@ -300,7 +321,9 @@
                 <label for="admin-email">Email</label>
                 <input
                   id="admin-email"
+                  name="admin_email"
                   type="email"
+                  value="{{ form_values.admin_email }}"
                   placeholder="Enter email"
                   autocomplete="email"
                 />
@@ -310,6 +333,7 @@
                   <label for="admin-password">Password</label>
                   <input
                     id="admin-password"
+                    name="admin_password"
                     type="password"
                     placeholder="Create password"
                     autocomplete="new-password"
@@ -319,6 +343,7 @@
                   <label for="admin-confirm-password">Confirm password</label>
                   <input
                     id="admin-confirm-password"
+                    name="admin_confirm_password"
                     type="password"
                     placeholder="Confirm password"
                     autocomplete="new-password"
@@ -329,8 +354,9 @@
                 <label for="admin-referral-code">Referral code</label>
                 <input
                   id="admin-referral-code"
+                  name="admin_referral_code"
                   type="text"
-                  value="eventify"
+                  value="{{ form_values.admin_referral_code }}"
                   placeholder="eventify"
                 />
               </div>
@@ -344,7 +370,7 @@
                 <span>{{ google_label }}</span>
               </button>
             </div>
-            <p class="status-text" aria-live="polite"></p>
+            <p class="status-text" aria-live="polite"{% if status_level == 'error' %} style="color: var(--red);"{% elif status_level == 'success' %} style="color: var(--teal);"{% endif %}>{{ status_message }}</p>
             <p class="auth-footer">
               <a
                 id="auth-role-link"

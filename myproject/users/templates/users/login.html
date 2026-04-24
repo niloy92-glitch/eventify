@@ -13,7 +13,7 @@
           <h1>Welcome back</h1>
           <p class="subtitle">Sign in to your Eventify account.</p>
 
-          <form id="login-form">
+          <form id="login-form" method="post" action="{% url 'users:login' %}">
             {% csrf_token %}
             <div
               class="auth-tabs"
@@ -48,11 +48,12 @@
                 Admin
               </button>
             </div>
-            <input id="login-role" type="hidden" value="client" />
+            <input id="login-role" type="hidden" name="role" value="client" />
             <div class="field">
               <label for="client-email">Email</label>
               <input
                 id="client-email"
+                name="email"
                 type="email"
                 placeholder="Enter email"
                 required
@@ -62,6 +63,7 @@
               <label for="client-password">Password</label>
               <input
                 id="client-password"
+                name="password"
                 type="password"
                 placeholder="Enter password"
                 required
@@ -69,7 +71,7 @@
             </div>
             <div class="row auth-row-utility">
               <label class="remember" for="client-remember">
-                <input id="client-remember" type="checkbox" /> Remember me
+                <input id="client-remember" name="remember" type="checkbox" /> Remember me
               </label>
             </div>
             <button class="submit-btn" type="submit">Sign In</button>

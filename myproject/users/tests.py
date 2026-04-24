@@ -1,5 +1,3 @@
-import json
-
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
 from django.test import TestCase
@@ -12,72 +10,84 @@ User = get_user_model()
 
 
 class AuthFlowTests(TestCase):
-	def post_json(self, url_name, payload):
-		return self.client.post(
-			reverse(url_name),
-			data=json.dumps(payload),
-			content_type="application/json",
-		)
-
 	def test_client_registration_redirects_to_client_landing(self):
-		response = self.post_json(
-			"users:register_api",
+		response = self.client.post(
+			reverse("users:register"),
 			{
 				"role": "client",
-				"first_name": "Ava",
-				"last_name": "Stone",
-				"email": "ava@example.com",
-				"password": "secret12345",
-				"confirm_password": "secret12345",
+				"client_first_name": "Ava",
+				"client_last_name": "Stone",
+				"client_email": "ava@example.com",
+				"client_password": "secret12345",
+				"client_confirm_password": "secret12345",
 			},
 		)
 
-		self.assertEqual(response.status_code, 200)
-		self.assertIn("/users/login/", response.json()["redirect_url"])
+		self.assertEqual(response.status_code, 302)
+		self.assertIn("/users/login/", response["Location"])
 
 		user = User.objects.get(email="ava@example.com")
 		self.assertFalse(user.email_verified)
 
 	def test_vendor_registration_uses_company_name(self):
-		response = self.post_json(
-			"users:register_api",
+		response = self.client.post(
+			reverse("users:register"),
 			{
 				"role": "vendor",
-				"company_name": "Bright Events",
-				"email": "vendor@example.com",
-				"password": "secret12345",
-				"confirm_password": "secret12345",
+				"vendor_company_name": "Bright Events",
+				"vendor_email": "vendor@example.com",
+				"vendor_password": "secret12345",
+				"vendor_confirm_password": "secret12345",
 			},
 		)
 
-		self.assertEqual(response.status_code, 200)
-		self.assertIn("/users/login/", response.json()["redirect_url"])
+		self.assertEqual(response.status_code, 302)
+		self.assertIn("/users/login/", response["Location"])
 
 		user = User.objects.get(email="vendor@example.com")
 		self.assertEqual(user.company_name, "Bright Events")
 		self.assertFalse(user.email_verified)
 
-	def test_admin_registration_accepts_default_referral_code(self):
-		response = self.post_json(
-			"users:register_api",
+	def test_admin_registration_requires_valid_referral_code(self):
+		response = self.client.post(
+			reverse("users:register"),
 			{
 				"role": "admin",
-				"first_name": "Maya",
-				"last_name": "Patel",
-				"email": "admin@example.com",
-				"password": "secret12345",
-				"confirm_password": "secret12345",
+				"admin_first_name": "Maya",
+				"admin_last_name": "Patel",
+				"admin_email": "admin@example.com",
+				"admin_password": "secret12345",
+				"admin_confirm_password": "secret12345",
+				"admin_referral_code": "eventify",
 			},
 		)
 
-		self.assertEqual(response.status_code, 200)
-		self.assertIn("/users/login/", response.json()["redirect_url"])
+		self.assertEqual(response.status_code, 302)
+		self.assertIn("/users/login/", response["Location"])
 
 		user = User.objects.get(email="admin@example.com")
 		self.assertEqual(user.role, "admin")
 		self.assertEqual(user.referral_code, "eventify")
 		self.assertFalse(user.is_staff)
 		self.assertFalse(user.email_verified)
+
+	def test_admin_registration_fails_without_referral_code(self):
+		response = self.client.post(
+			reverse("users:register"),
+			{
+				"role": "admin",
+				"admin_first_name": "Maya",
+				"admin_last_name": "Patel",
+				"admin_email": "admin-missing-ref@example.com",
+				"admin_password": "secret12345",
+				"admin_confirm_password": "secret12345",
+				"admin_referral_code": "",
+			},
+		)
+
+		self.assertEqual(response.status_code, 403)
+		self.assertContains(response, "Referral code is required", status_code=403)
+		self.assertFalse(User.objects.filter(email="admin-missing-ref@example.com").exists())
 
 	def test_unverified_user_cannot_login(self):
 		User.objects.create_user(
@@ -87,8 +97,8 @@ class AuthFlowTests(TestCase):
 			email_verified=False,
 		)
 
-		response = self.post_json(
-			"users:login_api",
+		response = self.client.post(
+			reverse("users:login"),
 			{
 				"role": "client",
 				"email": "newuser@example.com",
@@ -97,13 +107,13 @@ class AuthFlowTests(TestCase):
 		)
 
 		self.assertEqual(response.status_code, 403)
-		self.assertIn("verify", response.json()["message"].lower())
+		self.assertContains(response, "verify", status_code=403)
 
 	def test_django_admin_accounts_cannot_login_through_eventify(self):
 		User.objects.create_superuser(email="staff@example.com", password="secret12345")
 
-		response = self.post_json(
-			"users:login_api",
+		response = self.client.post(
+			reverse("users:login"),
 			{
 				"role": "admin",
 				"email": "staff@example.com",
@@ -112,8 +122,7 @@ class AuthFlowTests(TestCase):
 		)
 
 		self.assertEqual(response.status_code, 403)
-		self.assertFalse(response.json()["ok"])
-		self.assertIn("Django admin", response.json()["message"])
+		self.assertContains(response, "Django admin", status_code=403)
 
 	def test_verify_email_token_marks_user_as_verified(self):
 		user = User.objects.create_user(

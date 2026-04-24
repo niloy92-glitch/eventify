@@ -10,12 +10,11 @@ from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
 from django.views.decorators.http import require_GET, require_POST
 
-from .forms import LoginJSONForm, RegisterJSONForm
+from .forms import LoginForm, RegisterForm
 from .services import (
     AUTH_DEFAULT_ROLE,
     AUTH_MESSAGE_KEYS,
     DJANGO_ADMIN_URL,
-    ROLE_LABELS,
     add_auth_notice,
     auth_context,
     build_google_auth_url,
@@ -49,6 +48,26 @@ def _first_form_error(form) -> str:
     return "Invalid form data."
 
 
+def _bool_from_post(value: str | None) -> bool:
+    return str(value or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _auth_form_values_from_post(post_data: dict) -> dict:
+    return {
+        "login_email": str(post_data.get("email", "")).strip(),
+        "login_remember": _bool_from_post(post_data.get("remember")),
+        "client_first_name": str(post_data.get("client_first_name", "")).strip(),
+        "client_last_name": str(post_data.get("client_last_name", "")).strip(),
+        "client_email": str(post_data.get("client_email", "")).strip(),
+        "vendor_company_name": str(post_data.get("vendor_company_name", "")).strip(),
+        "vendor_email": str(post_data.get("vendor_email", "")).strip(),
+        "admin_first_name": str(post_data.get("admin_first_name", "")).strip(),
+        "admin_last_name": str(post_data.get("admin_last_name", "")).strip(),
+        "admin_email": str(post_data.get("admin_email", "")).strip(),
+        "admin_referral_code": str(post_data.get("admin_referral_code", "")).strip(),
+    }
+
+
 # ── Page views ───────────────────────────────────────────────────────────────
 
 @require_GET
@@ -56,22 +75,122 @@ def root_redirect(request: HttpRequest) -> HttpResponse:
     return redirect("users:login")
 
 
-@require_GET
 def login_page(request: HttpRequest) -> HttpResponse:
     if request.user.is_authenticated:
         if is_django_admin_user(request.user):
             return redirect(DJANGO_ADMIN_URL)
         return redirect(login_redirect_url(getattr(request.user, "role", AUTH_DEFAULT_ROLE)))
-    return render(request, "users/auth.html", auth_context(request, "login"))
+
+    active_role = normalize_role(request.POST.get("role") if request.method == "POST" else request.GET.get("role"))
+    if request.method == "GET":
+        return render(request, "users/auth.html", auth_context(request, "login", active_role=active_role))
+
+    form = LoginForm.from_post_data(request.POST, active_role)
+    if not form.is_valid():
+        context = auth_context(
+            request,
+            "login",
+            active_role=active_role,
+            form_values=_auth_form_values_from_post(request.POST),
+        )
+        context.update({"status_message": _first_form_error(form), "status_level": "error"})
+        return render(request, "users/auth.html", context, status=400)
+
+    email = form.cleaned_data["email"]
+    password = form.cleaned_data["password"]
+    remember = form.cleaned_data.get("remember", False)
+    role = form.cleaned_data["role"]
+
+    if not User.objects.filter(email__iexact=email, role=role).exists():
+        context = auth_context(
+            request,
+            "login",
+            active_role=role,
+            form_values=_auth_form_values_from_post(request.POST),
+        )
+        context.update({"status_message": "No user found.", "status_level": "error"})
+        return render(request, "users/auth.html", context, status=404)
+
+    user = authenticate(request, username=email, password=password)
+    if not user:
+        context = auth_context(
+            request,
+            "login",
+            active_role=role,
+            form_values=_auth_form_values_from_post(request.POST),
+        )
+        context.update({"status_message": "Invalid credentials.", "status_level": "error"})
+        return render(request, "users/auth.html", context, status=401)
+    if is_django_admin_user(user):
+        context = auth_context(
+            request,
+            "login",
+            active_role=role,
+            form_values=_auth_form_values_from_post(request.POST),
+        )
+        context.update({"status_message": "Use Django admin for this account.", "status_level": "error"})
+        return render(request, "users/auth.html", context, status=403)
+    if user.role != role:
+        context = auth_context(
+            request,
+            "login",
+            active_role=role,
+            form_values=_auth_form_values_from_post(request.POST),
+        )
+        context.update({"status_message": "No user found.", "status_level": "error"})
+        return render(request, "users/auth.html", context, status=404)
+    if verification_required() and not user.email_verified:
+        context = auth_context(
+            request,
+            "login",
+            active_role=role,
+            form_values=_auth_form_values_from_post(request.POST),
+        )
+        context.update({"status_message": "Please verify your email first. Check your inbox.", "status_level": "error"})
+        return render(request, "users/auth.html", context, status=403)
+
+    login(request, user)
+    request.session.set_expiry(60 * 60 * 24 * 14 if remember else 0)
+    return redirect(login_redirect_url(user.role))
 
 
-@require_GET
 def register_page(request: HttpRequest) -> HttpResponse:
     if request.user.is_authenticated:
         if is_django_admin_user(request.user):
             return redirect(DJANGO_ADMIN_URL)
         return redirect(login_redirect_url(getattr(request.user, "role", AUTH_DEFAULT_ROLE)))
-    return render(request, "users/auth.html", auth_context(request, "register"))
+
+    active_role = normalize_role(request.POST.get("role") if request.method == "POST" else request.GET.get("role"))
+    if request.method == "GET":
+        return render(request, "users/auth.html", auth_context(request, "register", active_role=active_role))
+
+    form = RegisterForm.from_post_data(request.POST, active_role)
+    if not form.is_valid():
+        error_message = _first_form_error(form)
+        context = auth_context(
+            request,
+            "register",
+            active_role=active_role,
+            form_values=_auth_form_values_from_post(request.POST),
+        )
+        context.update({"status_message": error_message, "status_level": "error"})
+        status_code = 403 if "referral" in error_message.lower() else 400
+        return render(request, "users/auth.html", context, status=status_code)
+
+    role = form.cleaned_data["role"]
+    user = create_user_from_registration(form.cleaned_data, verification_required())
+
+    if verification_required():
+        send_verification_email(request, user)
+        return redirect(
+            add_auth_notice(
+                f"{reverse('users:login')}?role={role}",
+                AUTH_MESSAGE_KEYS["verification_required"],
+            )
+        )
+
+    login(request, user)
+    return redirect(login_redirect_url(role))
 
 
 # ── Email verification ───────────────────────────────────────────────────────
@@ -202,84 +321,6 @@ def google_oauth_callback(request: HttpRequest) -> HttpResponse:
 
     login(request, user)
     return redirect(login_redirect_url(user.role))
-
-
-# ── JSON API endpoints ───────────────────────────────────────────────────────
-
-@require_POST
-def login_api(request: HttpRequest) -> JsonResponse:
-    form = LoginJSONForm.from_request_body(request.body)
-    if form is None:
-        return JsonResponse({"ok": False, "message": "Invalid request payload."}, status=400)
-    if not form.is_valid():
-        return JsonResponse({"ok": False, "message": _first_form_error(form)}, status=400)
-
-    email = form.cleaned_data["email"]
-    password = form.cleaned_data["password"]
-    remember = form.cleaned_data.get("remember", False)
-    role = form.cleaned_data["role"]
-    if not User.objects.filter(email__iexact=email, role=role).exists():
-        return JsonResponse({"ok": False, "message": "No user found."}, status=404)
-
-    user = authenticate(request, username=email, password=password)
-    if not user:
-        return JsonResponse({"ok": False, "message": "Invalid credentials."}, status=401)
-    if is_django_admin_user(user):
-        return JsonResponse({"ok": False, "message": "Use Django admin for this account."}, status=403)
-    if user.role != role:
-        return JsonResponse({"ok": False, "message": "No user found."}, status=404)
-    if verification_required() and not user.email_verified:
-        return JsonResponse(
-            {"ok": False, "message": "Please verify your email first. Check your inbox."},
-            status=403,
-        )
-
-    login(request, user)
-    request.session.set_expiry(60 * 60 * 24 * 14 if remember else 0)
-
-    return JsonResponse(
-        {
-            "ok": True,
-            "message": "Login successful.",
-            "redirect_url": login_redirect_url(user.role),
-        }
-    )
-
-
-@require_POST
-def register_api(request: HttpRequest) -> JsonResponse:
-    form = RegisterJSONForm.from_request_body(request.body)
-    if form is None:
-        return JsonResponse({"ok": False, "message": "Invalid request payload."}, status=400)
-    if not form.is_valid():
-        error_message = _first_form_error(form)
-        status_code = 403 if "referral" in error_message.lower() else 400
-        return JsonResponse({"ok": False, "message": error_message}, status=status_code)
-
-    role = form.cleaned_data["role"]
-    user = create_user_from_registration(form.cleaned_data, verification_required())
-
-    if verification_required():
-        send_verification_email(request, user)
-        return JsonResponse(
-            {
-                "ok": True,
-                "message": f"{ROLE_LABELS[role]} registration successful. Please verify your email.",
-                "redirect_url": add_auth_notice(
-                    f"{reverse('users:login')}?role={role}",
-                    AUTH_MESSAGE_KEYS["verification_required"],
-                ),
-            }
-        )
-
-    login(request, user)
-    return JsonResponse(
-        {
-            "ok": True,
-            "message": f"{ROLE_LABELS[role]} registration successful.",
-            "redirect_url": login_redirect_url(role),
-        }
-    )
 
 
 # ── Dashboard & Logout ───────────────────────────────────────────────────────
