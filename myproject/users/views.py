@@ -4,13 +4,13 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.tokens import default_token_generator
 from django.core import signing
 from django.http import HttpRequest, HttpResponse, JsonResponse
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
 from django.views.decorators.http import require_GET, require_POST
 
-from .forms import LoginForm, RegisterForm
+from .forms import AdminUserForm, LoginForm, RegisterForm
 from .services import (
     AUTH_DEFAULT_ROLE,
     AUTH_MESSAGE_KEYS,
@@ -68,6 +68,14 @@ def _auth_form_values_from_post(post_data: dict) -> dict:
         "admin_email": str(post_data.get("admin_email", "")).strip(),
         "admin_referral_code": str(post_data.get("admin_referral_code", "")).strip(),
     }
+
+
+def _admin_access_redirect(request: HttpRequest):
+    if is_django_admin_user(request.user):
+        return redirect(DJANGO_ADMIN_URL)
+    if normalize_role(getattr(request.user, "role", AUTH_DEFAULT_ROLE)) != "admin":
+        return redirect(login_redirect_url(getattr(request.user, "role", AUTH_DEFAULT_ROLE)))
+    return None
 
 
 # ── Page views ───────────────────────────────────────────────────────────────
@@ -343,7 +351,10 @@ def dashboard(request: HttpRequest, role: str) -> HttpResponse:
     if role == "client":
         return redirect("users:client_dashboard")
 
-    return render(request, f"users/dashboard_{role}.html", dashboard_context(request, role))
+    if role == "vendor":
+        return render(request, "users/vendor/dashboard.html", dashboard_context(request, role))
+
+    return render(request, f"users/{role}/dashboard.html", dashboard_context(request, role))
 
 
 def _client_access_redirect(request: HttpRequest):
@@ -363,7 +374,7 @@ def client_dashboard_view(request: HttpRequest) -> HttpResponse:
 
     context = client_base_context(request, "dashboard")
     context.update(client_dashboard_data(request))
-    return render(request, "users/dashboard_client.html", context)
+    return render(request, "users/client/dashboard.html", context)
 
 
 @login_required(login_url="users:login")
@@ -375,7 +386,7 @@ def client_my_events_view(request: HttpRequest) -> HttpResponse:
 
     context = client_base_context(request, "my_events")
     context.update({"page_name": "My Events"})
-    return render(request, "users/client_placeholder.html", context)
+    return render(request, "users/client/placeholder.html", context)
 
 
 @login_required(login_url="users:login")
@@ -387,7 +398,7 @@ def client_messages_view(request: HttpRequest) -> HttpResponse:
 
     context = client_base_context(request, "messages")
     context.update({"page_name": "Messages"})
-    return render(request, "users/client_placeholder.html", context)
+    return render(request, "users/client/placeholder.html", context)
 
 
 @login_required(login_url="users:login")
@@ -399,69 +410,96 @@ def client_profile_view(request: HttpRequest) -> HttpResponse:
 
     context = client_base_context(request, "profile")
     context.update({"page_name": "Profile"})
-    return render(request, "users/client_placeholder.html", context)
+    return render(request, "users/client/placeholder.html", context)
 
 
 @login_required(login_url="users:login")
 @require_GET
 def admin_dashboard_view(request: HttpRequest) -> HttpResponse:
-    if is_django_admin_user(request.user):
-        return redirect(DJANGO_ADMIN_URL)
-    if normalize_role(getattr(request.user, "role", AUTH_DEFAULT_ROLE)) != "admin":
-        return redirect(login_redirect_url(getattr(request.user, "role", AUTH_DEFAULT_ROLE)))
+    redirect_response = _admin_access_redirect(request)
+    if redirect_response is not None:
+        return redirect_response
 
     context = admin_base_context(request, "dashboard")
     context.update(admin_dashboard_data())
-    return render(request, "users/dashboard_admin.html", context)
+    return render(request, "users/admin/dashboard.html", context)
 
 
 @login_required(login_url="users:login")
 @require_GET
 def admin_users_view(request: HttpRequest) -> HttpResponse:
-    if is_django_admin_user(request.user):
-        return redirect(DJANGO_ADMIN_URL)
-    if normalize_role(getattr(request.user, "role", AUTH_DEFAULT_ROLE)) != "admin":
-        return redirect(login_redirect_url(getattr(request.user, "role", AUTH_DEFAULT_ROLE)))
+    redirect_response = _admin_access_redirect(request)
+    if redirect_response is not None:
+        return redirect_response
 
     context = admin_base_context(request, "users")
     context.update(admin_users_data())
-    return render(request, "users/admin_users.html", context)
+    notice = request.GET.get("auth_message", "").strip()
+    if notice:
+        context["notice"] = notice
+        context["notice_level"] = request.GET.get("auth_level", "info").strip() or "info"
+    return render(request, "users/admin/users.html", context)
+
+
+@login_required(login_url="users:login")
+@require_POST
+def admin_user_update_view(request: HttpRequest, user_id: int) -> HttpResponse:
+    redirect_response = _admin_access_redirect(request)
+    if redirect_response is not None:
+        return redirect_response
+
+    user = get_object_or_404(User, pk=user_id, is_superuser=False)
+    form = AdminUserForm(request.POST, instance=user)
+    if form.is_valid():
+        form.save()
+        return redirect(add_auth_notice(reverse("users:admin_users"), AUTH_MESSAGE_KEYS["user_updated"]))
+
+    return redirect(add_auth_notice(reverse("users:admin_users"), AUTH_MESSAGE_KEYS["user_update_failed"]))
+
+
+@login_required(login_url="users:login")
+@require_POST
+def admin_user_delete_view(request: HttpRequest, user_id: int) -> HttpResponse:
+    redirect_response = _admin_access_redirect(request)
+    if redirect_response is not None:
+        return redirect_response
+
+    user = get_object_or_404(User, pk=user_id, is_superuser=False)
+    user.delete()
+    return redirect(add_auth_notice(reverse("users:admin_users"), AUTH_MESSAGE_KEYS["user_deleted"]))
 
 
 @login_required(login_url="users:login")
 @require_GET
 def admin_approvals_view(request: HttpRequest) -> HttpResponse:
-    if is_django_admin_user(request.user):
-        return redirect(DJANGO_ADMIN_URL)
-    if normalize_role(getattr(request.user, "role", AUTH_DEFAULT_ROLE)) != "admin":
-        return redirect(login_redirect_url(getattr(request.user, "role", AUTH_DEFAULT_ROLE)))
+    redirect_response = _admin_access_redirect(request)
+    if redirect_response is not None:
+        return redirect_response
 
     context = admin_base_context(request, "approvals")
     context.update(admin_approvals_data())
-    return render(request, "users/admin_approvals.html", context)
+    return render(request, "users/admin/approvals.html", context)
 
 
 @login_required(login_url="users:login")
 @require_GET
 def admin_activity_logs_view(request: HttpRequest) -> HttpResponse:
-    if is_django_admin_user(request.user):
-        return redirect(DJANGO_ADMIN_URL)
-    if normalize_role(getattr(request.user, "role", AUTH_DEFAULT_ROLE)) != "admin":
-        return redirect(login_redirect_url(getattr(request.user, "role", AUTH_DEFAULT_ROLE)))
+    redirect_response = _admin_access_redirect(request)
+    if redirect_response is not None:
+        return redirect_response
 
     page_number = request.GET.get("page", "1")
     context = admin_base_context(request, "activity_logs")
     context.update(admin_activity_logs_data(page_number=page_number))
-    return render(request, "users/admin_activity_logs.html", context)
+    return render(request, "users/admin/activity_logs.html", context)
 
 
 @login_required(login_url="users:login")
 @require_GET
 def admin_profile_view(request: HttpRequest) -> HttpResponse:
-    if is_django_admin_user(request.user):
-        return redirect(DJANGO_ADMIN_URL)
-    if normalize_role(getattr(request.user, "role", AUTH_DEFAULT_ROLE)) != "admin":
-        return redirect(login_redirect_url(getattr(request.user, "role", AUTH_DEFAULT_ROLE)))
+    redirect_response = _admin_access_redirect(request)
+    if redirect_response is not None:
+        return redirect_response
 
     context = admin_base_context(request, "")
     context.update(
@@ -474,7 +512,7 @@ def admin_profile_view(request: HttpRequest) -> HttpResponse:
             "join_date": request.user.date_joined,
         }
     )
-    return render(request, "users/admin_profile.html", context)
+    return render(request, "users/admin/profile.html", context)
 
 
 @require_POST

@@ -1,0 +1,37 @@
+{% extends 'users/admin/base.html' %}
+
+{% block title %}Admin Activity Logs{% endblock %}
+
+{% block content %}
+<section class="card page-head">
+  <h1>Activity Logs</h1>
+  <p class="muted">Recent account and approval activity.</p>
+</section>
+
+<section class="card">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Who</th>
+          <th>Activity</th>
+          <th>When</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in logs %}
+          <tr>
+            <td>{{ row.actor }}</td>
+            <td>{{ row.activity }}</td>
+            <td>{{ row.when }}</td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="3">No logs found.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
