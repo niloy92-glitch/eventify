@@ -5,37 +5,122 @@
 {% block content %}
 <section class="card page-head">
   <h1>Approvals</h1>
-  <p class="muted">Review vendor service approvals.</p>
+  <p class="muted">Review vendor and vendor service approval requests.</p>
 </section>
 
 <section class="card">
+  <div class="table-toolbar approvals-toolbar">
+    <div class="filter-group" role="group" aria-label="Approval filters">
+      {% for item in filters %}
+        <a class="btn filter-btn{% if item.active %} active{% endif %}" href="{{ item.url }}">{{ item.label }}</a>
+      {% endfor %}
+    </div>
+
+    <form class="approvals-date-form" method="get" action="{% url 'users:admin_approvals' %}">
+      <input type="hidden" name="filter" value="{{ active_filter }}" />
+      <div class="approvals-date-fields">
+        <label class="field" for="from-date">
+          <span>From</span>
+          <input id="from-date" class="date-input" type="date" name="from_date" value="{{ from_date }}" />
+        </label>
+        <label class="field" for="to-date">
+          <span>To</span>
+          <input id="to-date" class="date-input" type="date" name="to_date" value="{{ to_date }}" />
+        </label>
+      </div>
+      <div class="approvals-date-actions">
+        <button type="submit" class="btn btn-primary">Apply</button>
+        <a class="btn" href="{% url 'users:admin_approvals' %}?filter={{ active_filter }}">Clear</a>
+      </div>
+    </form>
+  </div>
+
   <div class="table-wrap">
     <table>
       <thead>
         <tr>
           <th>Vendor</th>
-          <th>Service</th>
-          <th>Type</th>
-          <th>Price</th>
-          <th>Requested At</th>
+          <th>Vendor Service</th>
+          <th>Service Type</th>
+          <th>Creation Date</th>
+          <th>Status</th>
+          <th>Actions</th>
         </tr>
       </thead>
       <tbody>
         {% for row in rows %}
-          <tr>
-            <td>{{ row.company_name }}</td>
+          <tr class="approval-row approval-row-{{ row.status }}{% if row.status == 'allowed' %} approval-row-readonly{% endif %}">
+            <td>
+              <span class="vendor-name-inline">
+                {{ row.vendor_name }}
+                {% if row.vendor_approved %}
+                  <span class="vendor-approved-tick" title="Vendor approved" aria-label="Vendor approved">✓</span>
+                {% endif %}
+              </span>
+            </td>
             <td>{{ row.service_name }}</td>
             <td>{{ row.service_type }}</td>
-            <td>{{ row.price }}</td>
-            <td>{{ row.request_timestamp }}</td>
+            <td>{{ row.created_at }}</td>
+            <td><span class="badge {{ row.status_badge }}">{{ row.status_label }}</span></td>
+            <td class="actions-cell">
+              <button
+                type="button"
+                class="btn"
+                data-open-approval-modal
+                {% if row.status == 'allowed' %}disabled aria-disabled="true"{% endif %}
+                data-decision="approve"
+                data-request-type="{{ row.request_type }}"
+                data-request-id="{{ row.request_id }}"
+                data-vendor-name="{{ row.vendor_name }}"
+                data-service-name="{{ row.service_name }}"
+              >
+                Approve
+              </button>
+              <button
+                type="button"
+                class="btn danger-btn"
+                data-open-approval-modal
+                {% if row.status == 'allowed' %}disabled aria-disabled="true"{% endif %}
+                data-decision="reject"
+                data-request-type="{{ row.request_type }}"
+                data-request-id="{{ row.request_id }}"
+                data-vendor-name="{{ row.vendor_name }}"
+                data-service-name="{{ row.service_name }}"
+              >
+                Reject
+              </button>
+            </td>
           </tr>
         {% empty %}
           <tr>
-            <td colspan="5">No approvals found.</td>
+            <td colspan="5">No approval requests found.</td>
           </tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
 </section>
+{% endblock %}
+
+{% block modal_root %}
+<div class="modal" id="approval-confirm-modal" aria-hidden="true">
+  <div class="modal-panel">
+    <h2 id="approval-modal-title">Confirm Approval Action</h2>
+    <p id="approval-modal-text">Are you sure?</p>
+    <form id="approval-update-form" method="post" action="{% url 'users:admin_approval_update' %}">
+      {% csrf_token %}
+      <input type="hidden" id="approval-request-type" name="request_type" />
+      <input type="hidden" id="approval-request-id" name="request_id" />
+      <input type="hidden" id="approval-decision" name="decision" />
+      <input type="hidden" name="filter" value="{{ active_filter }}" />
+      <input type="hidden" name="from_date" value="{{ from_date }}" />
+      <input type="hidden" name="to_date" value="{{ to_date }}" />
+
+      <div class="modal-actions">
+        <button type="button" class="btn" data-close-modal="approval-confirm-modal">Cancel</button>
+        <button type="submit" class="btn" id="approval-confirm-submit">Confirm</button>
+      </div>
+    </form>
+  </div>
+</div>
 {% endblock %}

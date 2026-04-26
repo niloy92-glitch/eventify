@@ -1,4 +1,5 @@
 import requests
+from urllib.parse import urlencode
 from django.contrib.auth import authenticate, get_user_model, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.tokens import default_token_generator
@@ -11,6 +12,7 @@ from django.utils.http import urlsafe_base64_decode
 from django.views.decorators.http import require_GET, require_POST
 
 from .forms import AdminUserForm, LoginForm, RegisterForm
+from .models import ApprovalStatusChoices
 from .services import (
     AUTH_DEFAULT_ROLE,
     AUTH_MESSAGE_KEYS,
@@ -310,6 +312,7 @@ def google_oauth_callback(request: HttpRequest) -> HttpResponse:
         }
         if role == "vendor":
             create_fields["company_name"] = full_name
+            create_fields["vendor_approval_status"] = ApprovalStatusChoices.PENDING
 
         user = User.objects.create_user(
             email=email,
@@ -449,6 +452,9 @@ def admin_user_update_view(request: HttpRequest, user_id: int) -> HttpResponse:
         return redirect_response
 
     user = get_object_or_404(User, pk=user_id, is_superuser=False)
+    requested_role = normalize_role(request.POST.get("role"))
+    if requested_role in {"client", "vendor", "admin"}:
+        user.role = requested_role
     form = AdminUserForm(request.POST, instance=user)
     if form.is_valid():
         form.save()
@@ -477,8 +483,45 @@ def admin_approvals_view(request: HttpRequest) -> HttpResponse:
         return redirect_response
 
     context = admin_base_context(request, "approvals")
-    context.update(admin_approvals_data())
+    selected_filter = request.GET.get("filter", "all")
+    from_date = request.GET.get("from_date", "").strip()
+    to_date = request.GET.get("to_date", "").strip()
+    context.update(admin_approvals_data(filter_key=selected_filter, from_date=from_date, to_date=to_date))
     return render(request, "users/admin/approvals.html", context)
+
+
+@login_required(login_url="users:login")
+@require_POST
+def admin_approval_update_view(request: HttpRequest) -> HttpResponse:
+    redirect_response = _admin_access_redirect(request)
+    if redirect_response is not None:
+        return redirect_response
+
+    decision = str(request.POST.get("decision", "")).strip().lower()
+    request_type = str(request.POST.get("request_type", "")).strip().lower()
+    request_id = str(request.POST.get("request_id", "")).strip()
+
+    redirect_params = {
+        "filter": str(request.POST.get("filter", "all")).strip() or "all",
+        "from_date": str(request.POST.get("from_date", "")).strip(),
+        "to_date": str(request.POST.get("to_date", "")).strip(),
+    }
+    filtered_params = {key: value for key, value in redirect_params.items() if value}
+    redirect_url = reverse("users:admin_approvals")
+    if filtered_params:
+        redirect_url = f"{redirect_url}?{urlencode(filtered_params)}"
+
+    if decision not in {"approve", "reject"} or request_type != "vendor" or not request_id.isdigit():
+        return redirect(add_auth_notice(redirect_url, AUTH_MESSAGE_KEYS["approval_update_failed"]))
+
+    target_status = ApprovalStatusChoices.ALLOWED if decision == "approve" else ApprovalStatusChoices.REJECTED
+
+    if request_type == "vendor":
+        vendor = get_object_or_404(User, pk=int(request_id), role="vendor")
+        vendor.vendor_approval_status = target_status
+        vendor.save(update_fields=["vendor_approval_status"])
+
+    return redirect(add_auth_notice(redirect_url, AUTH_MESSAGE_KEYS["approval_updated"]))
 
 
 @login_required(login_url="users:login")

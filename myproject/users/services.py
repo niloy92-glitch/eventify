@@ -7,7 +7,6 @@ Google OAuth plumbing, email dispatch, and role helpers.
 
 import logging
 from datetime import timedelta
-from decimal import Decimal
 from urllib.parse import urlencode
 from urllib.parse import parse_qsl
 from urllib.parse import urlsplit
@@ -28,6 +27,8 @@ from django.db import transaction
 from django.utils.encoding import force_bytes
 from django.utils import timezone
 from django.utils.http import urlsafe_base64_encode
+
+from .models import ApprovalStatusChoices
 
 
 logger = logging.getLogger(__name__)
@@ -71,6 +72,8 @@ AUTH_MESSAGE_KEYS = {
     "user_deleted": "USER_DELETED",
     "user_update_failed": "USER_UPDATE_FAILED",
     "user_delete_failed": "USER_DELETE_FAILED",
+    "approval_updated": "APPROVAL_UPDATED",
+    "approval_update_failed": "APPROVAL_UPDATE_FAILED",
 }
 
 AUTH_MESSAGES = {
@@ -83,6 +86,8 @@ AUTH_MESSAGES = {
     "USER_DELETED": ("success", "User deleted successfully."),
     "USER_UPDATE_FAILED": ("error", "User update failed."),
     "USER_DELETE_FAILED": ("error", "User delete failed."),
+    "APPROVAL_UPDATED": ("success", "Approval status updated successfully."),
+    "APPROVAL_UPDATE_FAILED": ("error", "Approval update failed."),
 }
 
 
@@ -171,29 +176,46 @@ def _display_name(user) -> str:
     return user.get_full_name().strip() or user.email
 
 
-def _dummy_count(seed: int, minimum: int, span: int) -> int:
-    return minimum + (seed % max(span, 1))
+APPROVAL_FILTERS = {
+    "all": "All",
+    "allowed": "Allowed",
+    "rejected": "Rejected",
+    "vendors": "Vendors",
+    "services": "Services",
+}
 
 
-def _dummy_service_name(seed: int) -> str:
-    service_pool = [
-        "Premium Photography",
-        "Deluxe Catering",
-        "Stage Lighting",
-        "Corporate Decor",
-        "Live Sound Setup",
-    ]
-    return service_pool[seed % len(service_pool)]
+def normalize_approval_filter(filter_key: str | None) -> str:
+    normalized = str(filter_key or "all").strip().lower()
+    if normalized not in APPROVAL_FILTERS:
+        return "all"
+    return normalized
 
 
-def _dummy_service_type(seed: int) -> str:
-    type_pool = ["Photography", "Catering", "Audio", "Decor", "Logistics"]
-    return type_pool[seed % len(type_pool)]
+def parse_filter_date(value: str | None):
+    if not value:
+        return None
+    try:
+        return timezone.datetime.strptime(value, "%Y-%m-%d").date()
+    except ValueError:
+        return None
 
 
-def _dummy_price(seed: int) -> str:
-    amount = Decimal(_dummy_count(seed, 5000, 12000))
-    return f"BDT {amount:,.0f}"
+def approval_status_badge(status: str) -> str:
+    if status == ApprovalStatusChoices.ALLOWED:
+        return "confirmed"
+    if status == ApprovalStatusChoices.REJECTED:
+        return "rejected"
+    return "pending"
+
+
+def _approval_filter_url(filter_key: str, from_date: str, to_date: str) -> str:
+    params = {"filter": filter_key}
+    if from_date:
+        params["from_date"] = from_date
+    if to_date:
+        params["to_date"] = to_date
+    return f"{reverse('users:admin_approvals')}?{urlencode(params)}"
 
 
 def admin_base_context(request: HttpRequest, active_menu: str) -> dict:
@@ -407,39 +429,69 @@ def admin_dashboard_data() -> dict:
     }
 
 
-def admin_approvals_data() -> dict:
+def admin_approvals_data(filter_key: str = "all", from_date: str = "", to_date: str = "") -> dict:
+    normalized_filter = normalize_approval_filter(filter_key)
+    start_date = parse_filter_date(from_date)
+    end_date = parse_filter_date(to_date)
+
     user_model = get_user_model()
     vendors = user_model.objects.filter(role="vendor").order_by("-date_joined")
 
     rows = []
     for vendor in vendors:
-        seed = int(vendor.pk or 0)
         rows.append(
             {
-                "id": vendor.pk,
-                "company_name": vendor.company_name or _display_name(vendor),
-                "service_name": _dummy_service_name(seed),
-                "service_type": _dummy_service_type(seed),
-                "price": _dummy_price(seed),
-                "request_timestamp": timezone.localtime(vendor.date_joined).strftime("%d %b %Y, %I:%M %p"),
+                "request_type": "vendor",
+                "request_id": vendor.pk,
+                "vendor_name": vendor.company_name or _display_name(vendor),
+                "vendor_approved": vendor.vendor_approval_status == ApprovalStatusChoices.ALLOWED,
+                "service_name": "N/A",
+                "service_type": "N/A",
+                "status": vendor.vendor_approval_status,
+                "status_label": vendor.get_vendor_approval_status_display(),
+                "status_badge": approval_status_badge(vendor.vendor_approval_status),
+                "created_at_dt": timezone.localtime(vendor.date_joined),
             }
         )
 
-    if not rows:
-        now = timezone.now()
-        for seed in range(1, 5):
-            rows.append(
-                {
-                    "id": seed,
-                    "company_name": f"Sample Vendor {seed}",
-                    "service_name": _dummy_service_name(seed),
-                    "service_type": _dummy_service_type(seed),
-                    "price": _dummy_price(seed),
-                    "request_timestamp": timezone.localtime(now).strftime("%d %b %Y, %I:%M %p"),
-                }
-            )
+    filtered_rows = []
+    for row in rows:
+        created_date = row["created_at_dt"].date()
 
-    return {"rows": rows}
+        if start_date and created_date < start_date:
+            continue
+        if end_date and created_date > end_date:
+            continue
+
+        if normalized_filter == "allowed" and row["status"] != ApprovalStatusChoices.ALLOWED:
+            continue
+        if normalized_filter == "rejected" and row["status"] != ApprovalStatusChoices.REJECTED:
+            continue
+        if normalized_filter == "vendors" and row["request_type"] != "vendor":
+            continue
+        if normalized_filter == "services":
+            continue
+
+        row["created_at"] = row["created_at_dt"].strftime("%d %b %Y, %I:%M %p")
+        filtered_rows.append(row)
+
+    filtered_rows.sort(key=lambda item: item["created_at_dt"], reverse=True)
+
+    return {
+        "rows": filtered_rows,
+        "active_filter": normalized_filter,
+        "filters": [
+            {
+                "key": key,
+                "label": label,
+                "url": _approval_filter_url(key, from_date, to_date),
+                "active": key == normalized_filter,
+            }
+            for key, label in APPROVAL_FILTERS.items()
+        ],
+        "from_date": from_date,
+        "to_date": to_date,
+    }
 
 
 def admin_activity_logs_data(page_number: int = 1, per_page: int = 12) -> dict:
@@ -457,11 +509,12 @@ def admin_activity_logs_data(page_number: int = 1, per_page: int = 12) -> dict:
         )
 
     for row in approval_rows:
+        activity = "Submitted vendor account approval request"
         logs.append(
             {
-                "actor": row["company_name"],
-                "activity": f"Submitted service approval for {row['service_name']}",
-                "when": row["request_timestamp"],
+                "actor": row["vendor_name"],
+                "activity": activity,
+                "when": row["created_at"],
             }
         )
 
@@ -544,7 +597,12 @@ def create_user_from_registration(cleaned_data: dict, require_verification: bool
             "last_name": cleaned_data["last_name"],
         })
     elif role == "vendor":
-        extra_fields.update({"company_name": cleaned_data["company_name"]})
+        extra_fields.update(
+            {
+                "company_name": cleaned_data["company_name"],
+                "vendor_approval_status": ApprovalStatusChoices.PENDING,
+            }
+        )
     elif role == "admin":
         extra_fields.update({
             "first_name": cleaned_data["first_name"],

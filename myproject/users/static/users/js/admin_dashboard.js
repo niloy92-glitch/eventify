@@ -130,19 +130,48 @@
   }
 
   function initApprovalActions() {
-    document.querySelectorAll("[data-approval-action]").forEach(function (button) {
-      button.addEventListener("click", function () {
-        const row = button.closest("tr");
-        if (!row) return;
+    const approvalModal = document.getElementById("approval-confirm-modal");
+    const modalTitle = document.getElementById("approval-modal-title");
+    const modalText = document.getElementById("approval-modal-text");
+    const requestTypeInput = document.getElementById("approval-request-type");
+    const requestIdInput = document.getElementById("approval-request-id");
+    const decisionInput = document.getElementById("approval-decision");
+    const submitButton = document.getElementById("approval-confirm-submit");
 
-        const approved = button.getAttribute("data-approval-action") === "approve";
-        row.style.opacity = "0.45";
-        const cell = row.querySelector(".actions-cell");
-        if (cell) {
-          cell.innerHTML = approved
-            ? '<span class="badge confirmed">Approved</span>'
-            : '<span class="badge rejected">Rejected</span>';
+    if (!approvalModal || !requestTypeInput || !requestIdInput || !decisionInput || !submitButton) {
+      return;
+    }
+
+    document.querySelectorAll("[data-open-approval-modal]").forEach(function (button) {
+      button.addEventListener("click", function () {
+        const decision = button.getAttribute("data-decision") || "approve";
+        const requestType = button.getAttribute("data-request-type") || "vendor";
+        const requestId = button.getAttribute("data-request-id") || "";
+        const vendorName = button.getAttribute("data-vendor-name") || "this vendor";
+        const serviceName = button.getAttribute("data-service-name") || "-";
+
+        requestTypeInput.value = requestType;
+        requestIdInput.value = requestId;
+        decisionInput.value = decision;
+
+        const isApprove = decision === "approve";
+        const targetLabel = requestType === "service" && serviceName !== "-"
+          ? "service \"" + serviceName + "\" from " + vendorName
+          : "vendor " + vendorName;
+
+        if (modalTitle) {
+          modalTitle.textContent = isApprove ? "Approve Request" : "Reject Request";
         }
+
+        if (modalText) {
+          modalText.textContent = (isApprove ? "Approve " : "Reject ") + targetLabel + "?";
+        }
+
+        submitButton.textContent = isApprove ? "Approve" : "Reject";
+        submitButton.classList.toggle("btn-primary", isApprove);
+        submitButton.classList.toggle("danger-btn", !isApprove);
+
+        openModal(approvalModal);
       });
     });
   }

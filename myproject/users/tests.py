@@ -5,6 +5,8 @@ from django.urls import reverse
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 
+from .models import ApprovalStatusChoices
+
 
 User = get_user_model()
 
@@ -272,3 +274,49 @@ class AuthFlowTests(TestCase):
 		response = self.client.get(reverse("users:client_messages"))
 		self.assertEqual(response.status_code, 200)
 		self.assertContains(response, "Messages")
+
+	def test_admin_approvals_page_uses_na_for_service_fields(self):
+		admin_user = User.objects.create_user(
+			email="admin.na@example.com",
+			password="secret12345",
+			role="admin",
+			email_verified=True,
+		)
+		User.objects.create_user(
+			email="vendor.na@example.com",
+			password="secret12345",
+			role="vendor",
+			company_name="NA Vendor",
+			email_verified=True,
+			vendor_approval_status=ApprovalStatusChoices.PENDING,
+		)
+
+		self.client.force_login(admin_user)
+		response = self.client.get(reverse("users:admin_approvals"))
+
+		self.assertEqual(response.status_code, 200)
+		self.assertContains(response, "N/A")
+		self.assertContains(response, "Status")
+
+	def test_admin_approvals_allowed_rows_are_read_only(self):
+		admin_user = User.objects.create_user(
+			email="admin.readonly@example.com",
+			password="secret12345",
+			role="admin",
+			email_verified=True,
+		)
+		User.objects.create_user(
+			email="vendor.readonly@example.com",
+			password="secret12345",
+			role="vendor",
+			company_name="Locked Vendor",
+			email_verified=True,
+			vendor_approval_status=ApprovalStatusChoices.ALLOWED,
+		)
+
+		self.client.force_login(admin_user)
+		response = self.client.get(reverse("users:admin_approvals"))
+
+		self.assertEqual(response.status_code, 200)
+		self.assertContains(response, "approval-row-readonly")
+		self.assertContains(response, 'disabled aria-disabled="true"')
