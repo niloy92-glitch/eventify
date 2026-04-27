@@ -11,9 +11,20 @@ class RoleChoices(models.TextChoices):
 	ADMIN = "admin", "Admin"
 
 
+class ApprovalStatusChoices(models.TextChoices):
+	PENDING = "pending", "Pending"
+	ALLOWED = "allowed", "Allowed"
+	REJECTED = "rejected", "Rejected"
+
+
 class EventUser(AbstractBaseUser, PermissionsMixin):
 	email = models.EmailField(unique=True)
 	role = models.CharField(max_length=20, choices=RoleChoices.choices, default=RoleChoices.CLIENT)
+	vendor_approval_status = models.CharField(
+		max_length=20,
+		choices=ApprovalStatusChoices.choices,
+		default=ApprovalStatusChoices.ALLOWED,
+	)
 
 	first_name = models.CharField(max_length=100, blank=True)
 	last_name = models.CharField(max_length=100, blank=True)
@@ -48,41 +59,3 @@ class EventUser(AbstractBaseUser, PermissionsMixin):
 	def __str__(self):
 		return self.get_full_name()
 
-
-# # Legacy tables kept temporarily for data migration and rollback safety.
-# class Client(models.Model):
-# 	first_name = models.CharField(max_length=100)
-# 	last_name = models.CharField(max_length=100)
-# 	phone = models.CharField(max_length=20, blank=True, null=True)
-# 	email = models.EmailField(unique=True)
-# 	password = models.CharField(max_length=128)
-# 	role = models.CharField(max_length=20, choices=RoleChoices.choices, default=RoleChoices.CLIENT)
-# 	address = models.TextField(blank=True, null=True)
-
-# 	def __str__(self):
-# 		return f"{self.first_name} {self.last_name}".strip()
-
-
-# class Vendor(models.Model):
-# 	company_name = models.CharField(max_length=150)
-# 	phone = models.CharField(max_length=20, blank=True, null=True)
-# 	email = models.EmailField(unique=True)
-# 	password = models.CharField(max_length=128)
-# 	role = models.CharField(max_length=20, choices=RoleChoices.choices, default=RoleChoices.VENDOR)
-# 	address = models.TextField()
-
-# 	def __str__(self):
-# 		return self.company_name
-
-
-# class AdminUser(models.Model):
-# 	first_name = models.CharField(max_length=100)
-# 	last_name = models.CharField(max_length=100)
-# 	phone = models.CharField(max_length=20, blank=True, null=True)
-# 	email = models.EmailField(unique=True)
-# 	password = models.CharField(max_length=128)
-# 	role = models.CharField(max_length=20, choices=RoleChoices.choices, default=RoleChoices.ADMIN)
-# 	referral_code = models.CharField(max_length=100)
-
-# 	def __str__(self):
-# 		return f"{self.first_name} {self.last_name}".strip()

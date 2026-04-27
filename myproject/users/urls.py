@@ -54,6 +54,7 @@ urlpatterns = [
     path("admin/users/<int:user_id>/update/", views.admin_user_update_view, name="admin_user_update"),
     path("admin/users/<int:user_id>/delete/", views.admin_user_delete_view, name="admin_user_delete"),
     path("admin/approvals/", views.admin_approvals_view, name="admin_approvals"),
+    path("admin/approvals/update/", views.admin_approval_update_view, name="admin_approval_update"),
     path("admin/activity-logs/", views.admin_activity_logs_view, name="admin_activity_logs"),
     path("admin/profile/", views.admin_profile_view, name="admin_profile"),
     path("logout/", views.logout_view, name="logout"),

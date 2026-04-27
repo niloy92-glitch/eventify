@@ -9,13 +9,24 @@ class EventUserAdmin(UserAdmin):
 	ordering = ("email",)
 	list_display = ("email", "role", "is_staff", "is_active")
 	search_fields = ("email", "first_name", "last_name", "company_name")
-	list_filter = ("role", "is_staff", "is_superuser", "is_active")
+	list_filter = ("role", "vendor_approval_status", "is_staff", "is_superuser", "is_active")
 
 	fieldsets = (
 		(None, {"fields": ("email", "password")} ),
 		(
 			"Profile",
-			{"fields": ("role", "first_name", "last_name", "company_name", "phone", "address", "referral_code")},
+			{
+				"fields": (
+					"role",
+					"vendor_approval_status",
+					"first_name",
+					"last_name",
+					"company_name",
+					"phone",
+					"address",
+					"referral_code",
+				)
+			},
 		),
 		("Permissions", {"fields": ("is_active", "is_staff", "is_superuser", "groups", "user_permissions")}),
 		("Important dates", {"fields": ("last_login",)}),
