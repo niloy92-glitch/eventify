@@ -29,6 +29,8 @@ from .services import (
     admin_users_data,
     client_base_context,
     client_dashboard_data,
+    vendor_base_context,
+    vendor_dashboard_data,
     exchange_google_code_for_token,
     fetch_google_userinfo,
     google_oauth_configured,
@@ -76,6 +78,14 @@ def _admin_access_redirect(request: HttpRequest):
     if is_django_admin_user(request.user):
         return redirect(DJANGO_ADMIN_URL)
     if normalize_role(getattr(request.user, "role", AUTH_DEFAULT_ROLE)) != "admin":
+        return redirect(login_redirect_url(getattr(request.user, "role", AUTH_DEFAULT_ROLE)))
+    return None
+
+
+def _vendor_access_redirect(request: HttpRequest):
+    if is_django_admin_user(request.user):
+        return redirect(DJANGO_ADMIN_URL)
+    if normalize_role(getattr(request.user, "role", AUTH_DEFAULT_ROLE)) != "vendor":
         return redirect(login_redirect_url(getattr(request.user, "role", AUTH_DEFAULT_ROLE)))
     return None
 
@@ -355,7 +365,7 @@ def dashboard(request: HttpRequest, role: str) -> HttpResponse:
         return redirect("users:client_dashboard")
 
     if role == "vendor":
-        return render(request, "users/vendor/dashboard.html", dashboard_context(request, role))
+        return redirect("users:vendor_dashboard")
 
     return render(request, f"users/{role}/dashboard.html", dashboard_context(request, role))
 
@@ -390,6 +400,56 @@ def client_my_events_view(request: HttpRequest) -> HttpResponse:
     context = client_base_context(request, "my_events")
     context.update({"page_name": "My Events"})
     return render(request, "users/client/placeholder.html", context)
+
+
+@login_required(login_url="users:login")
+@require_GET
+def vendor_dashboard_view(request: HttpRequest) -> HttpResponse:
+    redirect_response = _vendor_access_redirect(request)
+    if redirect_response is not None:
+        return redirect_response
+
+    context = vendor_base_context(request, "dashboard")
+    context.update(vendor_dashboard_data(request))
+    return render(request, "users/vendor/dashboard.html", context)
+
+
+@login_required(login_url="users:login")
+@require_GET
+def vendor_services_view(request: HttpRequest) -> HttpResponse:
+    redirect_response = _vendor_access_redirect(request)
+    if redirect_response is not None:
+        return redirect_response
+
+    context = vendor_base_context(request, "services")
+    context.update({"page_name": "Services"})
+    return render(request, "users/vendor/placeholder.html", context)
+
+
+@login_required(login_url="users:login")
+@require_GET
+def vendor_events_view(request: HttpRequest) -> HttpResponse:
+    redirect_response = _vendor_access_redirect(request)
+    if redirect_response is not None:
+        return redirect_response
+
+    context = vendor_base_context(request, "events")
+    context.update({"page_name": "Events"})
+    return render(request, "users/vendor/placeholder.html", context)
+
+
+@login_required(login_url="users:login")
+@require_GET
+def vendor_messages_view(request: HttpRequest) -> HttpResponse:
+    redirect_response = _vendor_access_redirect(request)
+    if redirect_response is not None:
+        return redirect_response
+
+    context = vendor_base_context(request, "messages")
+    context.update({"page_name": "Messages"})
+    return render(request, "users/vendor/placeholder.html", context)
+
+
 
 
 @login_required(login_url="users:login")

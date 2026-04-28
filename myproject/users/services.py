@@ -13,6 +13,7 @@ from urllib.parse import urlsplit
 from urllib.parse import urlunsplit
 
 import requests
+from django.apps import apps
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
@@ -20,6 +21,7 @@ from django.core import signing
 from django.core.paginator import Paginator
 from django.core.mail import send_mail
 from django.db.models import Count
+from django.db import models
 from django.http import HttpRequest
 from django.template.loader import render_to_string
 from django.urls import reverse
@@ -38,13 +40,13 @@ logger = logging.getLogger(__name__)
 
 ROLE_ROUTE_NAMES = {
     "client": "users:dashboard",
-    "vendor": "users:dashboard",
+    "vendor": "users:vendor_dashboard",
     "admin": "users:dashboard",
 }
 
 LOGIN_ROUTE_NAMES = {
     "client": "client",
-    "vendor": "vendor",
+    "vendor": "users:vendor_dashboard",
     "admin": "users:dashboard",
 }
 
@@ -101,7 +103,11 @@ def normalize_role(role: str | None) -> str:
 
 
 def role_dashboard_url(role: str) -> str:
-    return reverse(ROLE_ROUTE_NAMES[normalize_role(role)], kwargs={"role": normalize_role(role)})
+    normalized_role = normalize_role(role)
+    route_name = ROLE_ROUTE_NAMES[normalized_role]
+    if route_name == "users:dashboard":
+        return reverse(route_name, kwargs={"role": normalized_role})
+    return reverse(route_name)
 
 
 def login_redirect_url(role: str) -> str:
@@ -174,6 +180,209 @@ def dashboard_context(request: HttpRequest, role: str) -> dict:
 
 def _display_name(user) -> str:
     return user.get_full_name().strip() or user.email
+
+
+def _vendor_event_model():
+    for model in apps.get_models():
+        if model.__name__ in {"Event", "VendorEvent"}:
+            return model
+    return None
+
+
+def _concrete_field_map(model) -> dict:
+    return {
+        field.name: field
+        for field in model._meta.get_fields()
+        if getattr(field, "concrete", False)
+    }
+
+
+def _vendor_event_field(fields: dict, candidates: tuple[str, ...]):
+    for field_name in candidates:
+        if field_name in fields:
+            return field_name, fields[field_name]
+    return None, None
+
+
+def _vendor_event_title(event) -> str:
+    for field_name in ("title", "name", "event_name", "service_name"):
+        value = getattr(event, field_name, "")
+        if value:
+            return str(value)
+    return str(event)
+
+
+def _vendor_event_location(event) -> str:
+    for field_name in ("location", "venue", "address", "event_location"):
+        value = getattr(event, field_name, "")
+        if value:
+            return str(value)
+    return "Venue to be confirmed"
+
+
+def _vendor_event_owner_field(fields: dict) -> str | None:
+    for field_name in ("vendor", "owner", "organizer", "host", "created_by", "user"):
+        if field_name in fields:
+            return field_name
+    return None
+
+
+def _serialize_vendor_event(event, date_field_name: str, date_field) -> dict:
+    raw_date = getattr(event, date_field_name)
+    if isinstance(date_field, models.DateTimeField):
+        event_dt = timezone.localtime(raw_date) if timezone.is_aware(raw_date) else raw_date
+        event_date = event_dt.date()
+        date_label = event_dt.strftime("%A, %B %d, %Y")
+        time_label = event_dt.strftime("%I:%M %p").lstrip("0")
+    else:
+        event_date = raw_date
+        date_label = raw_date.strftime("%A, %B %d, %Y")
+        time_label = "All day"
+
+    days_until = (event_date - timezone.localdate()).days
+    if days_until <= 0:
+        timing_label = "Today"
+    elif days_until == 1:
+        timing_label = "In 1 day"
+    else:
+        timing_label = f"In {days_until} days"
+
+    status_value = getattr(event, "status", None)
+    status_label = str(status_value).replace("_", " ").title() if status_value else "Upcoming"
+
+    return {
+        "title": _vendor_event_title(event),
+        "date_label": date_label,
+        "time_label": time_label,
+        "timing_label": timing_label,
+        "location": _vendor_event_location(event),
+        "status_label": status_label,
+        "status_badge": "info-tag",
+    }
+
+
+def _dummy_vendor_event(today) -> dict:
+    event_date = today + timedelta(days=4)
+    return {
+        "title": "Summer Showcase Setup",
+        "date_label": event_date.strftime("%A, %B %d, %Y"),
+        "time_label": "5:30 PM",
+        "timing_label": "In 4 days",
+        "location": "Grand Avenue Convention Hall",
+        "status_label": "Upcoming",
+        "status_badge": "info-tag",
+    }
+
+
+def vendor_base_context(request: HttpRequest, active_menu: str) -> dict:
+    user_name = _display_name(request.user)
+    initials = "".join(part[0] for part in user_name.split() if part).upper()[:2] or "VN"
+
+    nav_links = [
+        {
+            "label": "Dashboard",
+            "href": reverse("users:vendor_dashboard"),
+            "active": active_menu == "dashboard",
+        },
+        {
+            "label": "Services",
+            "href": reverse("users:vendor_services"),
+            "active": active_menu == "services",
+        },
+        {
+            "label": "Events",
+            "href": reverse("users:vendor_events"),
+            "active": active_menu == "events",
+        },
+        {
+            "label": "Messages",
+            "href": reverse("users:vendor_messages"),
+            "active": active_menu == "messages",
+        },
+    ]
+
+    return {
+        "role": "vendor",
+        "user_name": user_name,
+        "initials": initials,
+        "vendor_nav_links": nav_links,
+        "notification_items": [
+            "Two event inquiries are waiting for your response.",
+            "A client booked a date inside the next 7 days.",
+            "Your service catalog is ready for review.",
+        ],
+    }
+
+
+def vendor_dashboard_data(request: HttpRequest) -> dict:
+    today = timezone.localdate()
+    window_end = today + timedelta(days=7)
+    upcoming_events = []
+
+    model = _vendor_event_model()
+    if model is not None:
+        fields = _concrete_field_map(model)
+        date_field_name, date_field = _vendor_event_field(
+            fields,
+            (
+                "start_datetime",
+                "start_at",
+                "starts_at",
+                "scheduled_for",
+                "event_datetime",
+                "event_date",
+                "date",
+                "starts_on",
+            ),
+        )
+        owner_field_name = _vendor_event_owner_field(fields)
+
+        if date_field_name and owner_field_name:
+            queryset = model._default_manager.all()
+            try:
+                queryset = queryset.filter(**{owner_field_name: request.user})
+            except Exception:
+                try:
+                    queryset = queryset.filter(**{f"{owner_field_name}_id": request.user.pk})
+                except Exception:
+                    queryset = None
+
+            if queryset is not None:
+                if isinstance(date_field, models.DateTimeField):
+                    queryset = queryset.filter(
+                        **{
+                            f"{date_field_name}__date__gte": today,
+                            f"{date_field_name}__date__lte": window_end,
+                        }
+                    )
+                else:
+                    queryset = queryset.filter(
+                        **{
+                            f"{date_field_name}__gte": today,
+                            f"{date_field_name}__lte": window_end,
+                        }
+                    )
+
+                queryset = queryset.order_by(date_field_name)
+                upcoming_events = [
+                    _serialize_vendor_event(event, date_field_name, date_field)
+                    for event in queryset[:6]
+                ]
+
+    if not upcoming_events:
+        upcoming_events = [_dummy_vendor_event(today)]
+
+    upcoming_count = len(upcoming_events)
+    return {
+        "today_label": today.strftime("%A, %B %d, %Y"),
+        "stats": {
+            "services": max(3, upcoming_count + 2),
+            "events": upcoming_count,
+            "messages": max(2, upcoming_count + 1),
+            "bookings": max(1, upcoming_count - 1 if upcoming_count > 1 else 1),
+        },
+        "upcoming_events": upcoming_events,
+    }
 
 
 APPROVAL_FILTERS = {

@@ -1,21 +1,84 @@
-{% load static %}
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vendor Dashboard</title>
-    <link rel="stylesheet" href="{% static 'users/css/style.css' %}" />
-    <link rel="stylesheet" href="{% static 'users/css/dashboard.css' %}" />
-  </head>
-  <body>
-    <main>
-      <h1>hello {{ user_name }}, {{ role }}!</h1>
-      <p>{{ role }} access is active for {{ user_name }}.</p>
-      <form action="{% url 'users:logout' %}" method="post">
-        {% csrf_token %}
-        <button type="submit">Logout</button>
-      </form>
-    </main>
-  </body>
-</html>
+{% extends 'users/vendor/base.html' %}
+
+{% block title %}Vendor Dashboard{% endblock %}
+
+{% block content %}
+<section class="card page-head">
+  <div class="row-between">
+    <div>
+      <h1>Vendor Dashboard</h1>
+      <p class="muted">Track your services, messages, and events for the next 7 days.</p>
+    </div>
+    <div style="text-align: right;">
+      <p class="muted">{{ today_label }}</p>
+      <p class="muted">Upcoming window: next 7 days</p>
+    </div>
+  </div>
+</section>
+
+<section class="card">
+  <div class="row-between section-head" style="margin-bottom: 1rem;">
+    <h2>Vendor Stats</h2>
+    <a class="btn" href="{% url 'users:vendor_services' %}">Manage Services</a>
+  </div>
+  <div class="stats-grid">
+    <article class="card stat-card">
+      <h3>Active Services</h3>
+      <p class="stat-value">{{ stats.services }}</p>
+    </article>
+    <article class="card stat-card">
+      <h3>Upcoming Events</h3>
+      <p class="stat-value">{{ stats.events }}</p>
+    </article>
+    <article class="card stat-card">
+      <h3>Messages</h3>
+      <p class="stat-value">{{ stats.messages }}</p>
+    </article>
+    <article class="card stat-card">
+      <h3>Confirmed Bookings</h3>
+      <p class="stat-value">{{ stats.bookings }}</p>
+    </article>
+  </div>
+</section>
+
+<section class="card">
+  <div class="row-between section-head" style="margin-bottom: 1rem;">
+    <div>
+      <h2>Upcoming Events</h2>
+      <p class="muted">Events scheduled within the next 7 days.</p>
+    </div>
+  </div>
+  <div class="events-grid">
+    {% for event in upcoming_events %}
+      <article class="card event-card">
+        <div class="event-card-top">
+          <div>
+            <p class="event-card-kicker">{{ event.timing_label }}</p>
+            <h3>{{ event.title }}</h3>
+          </div>
+          <span class="badge {{ event.status_badge }}">{{ event.status_label }}</span>
+        </div>
+        <div class="event-card-meta">
+          <div class="event-card-meta-row">
+            <span class="event-card-label">Date</span>
+            <strong>{{ event.date_label }}</strong>
+          </div>
+          <div class="event-card-meta-row">
+            <span class="event-card-label">Time</span>
+            <strong>{{ event.time_label }}</strong>
+          </div>
+          <div class="event-card-meta-row">
+            <span class="event-card-label">Location</span>
+            <strong>{{ event.location }}</strong>
+          </div>
+        </div>
+      </article>
+    {% empty %}
+      <div class="card empty-state-card">
+        <h3>No upcoming events</h3>
+        <p class="muted">Add an event to see it appear here automatically.</p>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
