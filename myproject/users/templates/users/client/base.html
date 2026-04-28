@@ -64,6 +64,8 @@
       </main>
     </div>
 
+    {% block modal_root %}{% endblock %}
+
     <script src="{% static 'users/js/toast.js' %}"></script>
     <script src="{% static 'users/js/admin_dashboard.js' %}"></script>
     {% block extra_scripts %}{% endblock %}

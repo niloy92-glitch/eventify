@@ -524,14 +524,65 @@ def client_messages_view(request: HttpRequest) -> HttpResponse:
 
 @login_required(login_url="users:login")
 @require_GET
+@login_required(login_url="users:login")
+@require_GET
 def client_profile_view(request: HttpRequest) -> HttpResponse:
     redirect_response = _client_access_redirect(request)
     if redirect_response is not None:
         return redirect_response
 
-    context = client_base_context(request, "profile")
-    context.update({"page_name": "Profile"})
-    return render(request, "users/client/placeholder.html", context)
+    context = client_base_context(request, "")
+    context.update(
+        {
+            "email": request.user.email,
+            "first_name": request.user.first_name or "Not provided",
+            "last_name": request.user.last_name or "Not provided",
+            "phone": request.user.phone or "Not provided",
+            "address": request.user.address or "Not provided",
+            "join_date": request.user.date_joined,
+        }
+    )
+    return render(request, "users/client/profile.html", context)
+
+
+@login_required(login_url="users:login")
+@require_POST
+def client_profile_update_view(request: HttpRequest) -> HttpResponse:
+    redirect_response = _client_access_redirect(request)
+    if redirect_response is not None:
+        return redirect_response
+
+    first_name = str(request.POST.get("first_name", "")).strip()
+    last_name = str(request.POST.get("last_name", "")).strip()
+    phone = str(request.POST.get("phone", "")).strip()
+    address = str(request.POST.get("address", "")).strip()
+
+    user = request.user
+    user.first_name = first_name
+    user.last_name = last_name
+    user.phone = phone
+    user.address = address
+    user.save()
+
+    return redirect("users:client_profile")
+
+
+@login_required(login_url="users:login")
+@require_POST
+def client_delete_account_view(request: HttpRequest) -> HttpResponse:
+    redirect_response = _client_access_redirect(request)
+    if redirect_response is not None:
+        return redirect_response
+
+    password = request.POST.get("password", "")
+    user = request.user
+
+    if not user.check_password(password):
+        return redirect(add_auth_notice(reverse("users:client_profile"), "user_update_failed"))
+
+    logout(request)
+    user.delete()
+    return redirect("users:login")
 
 
 @login_required(login_url="users:login")
