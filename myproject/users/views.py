@@ -450,6 +450,64 @@ def vendor_messages_view(request: HttpRequest) -> HttpResponse:
     return render(request, "users/vendor/placeholder.html", context)
 
 
+@login_required(login_url="users:login")
+@require_GET
+def vendor_profile_view(request: HttpRequest) -> HttpResponse:
+    redirect_response = _vendor_access_redirect(request)
+    if redirect_response is not None:
+        return redirect_response
+
+    context = vendor_base_context(request, "")
+    context.update(
+        {
+            "email": request.user.email,
+            "company_name": request.user.company_name or "Not provided",
+            "phone": request.user.phone or "Not provided",
+            "address": request.user.address or "Not provided",
+            "join_date": request.user.date_joined,
+        }
+    )
+    return render(request, "users/vendor/profile.html", context)
+
+
+@login_required(login_url="users:login")
+@require_POST
+def vendor_profile_update_view(request: HttpRequest) -> HttpResponse:
+    redirect_response = _vendor_access_redirect(request)
+    if redirect_response is not None:
+        return redirect_response
+
+    company_name = str(request.POST.get("company_name", "")).strip()
+    phone = str(request.POST.get("phone", "")).strip()
+    address = str(request.POST.get("address", "")).strip()
+
+    user = request.user
+    user.company_name = company_name
+    user.phone = phone
+    user.address = address
+    user.save()
+
+    return redirect("users:vendor_profile")
+
+
+@login_required(login_url="users:login")
+@require_POST
+def vendor_delete_account_view(request: HttpRequest) -> HttpResponse:
+    redirect_response = _vendor_access_redirect(request)
+    if redirect_response is not None:
+        return redirect_response
+
+    password = request.POST.get("password", "")
+    user = request.user
+
+    if not user.check_password(password):
+        return redirect(add_auth_notice(reverse("users:vendor_profile"), "user_update_failed"))
+
+    logout(request)
+    user.delete()
+    return redirect("users:login")
+
+
 
 
 @login_required(login_url="users:login")
