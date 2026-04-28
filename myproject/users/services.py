@@ -306,6 +306,7 @@ def vendor_base_context(request: HttpRequest, active_menu: str) -> dict:
         "user_name": user_name,
         "initials": initials,
         "vendor_nav_links": nav_links,
+        "vendor_profile_url": reverse("users:vendor_profile"),
         "notification_items": [
             "Two event inquiries are waiting for your response.",
             "A client booked a date inside the next 7 days.",

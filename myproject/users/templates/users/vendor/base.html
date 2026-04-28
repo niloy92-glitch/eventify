@@ -16,7 +16,7 @@
       <aside class="admin-sidebar" aria-label="Primary">
         <a class="logo-link sidebar-logo" href="{% url 'users:vendor_dashboard' %}">Event<span>ify</span></a>
 
-        <a class="sidebar-user profile-card" href="{% url 'users:vendor_dashboard' %}">
+        <a class="sidebar-user profile-card" href="{{ vendor_profile_url }}">
           <div class="sidebar-user-avatar" aria-hidden="true">{{ initials }}</div>
           <div>
             <p class="sidebar-user-name">{{ user_name }}</p>
@@ -63,6 +63,8 @@
         {% block content %}{% endblock %}
       </main>
     </div>
+
+    {% block modal_root %}{% endblock %}
 
     <script src="{% static 'users/js/toast.js' %}"></script>
     <script src="{% static 'users/js/admin_dashboard.js' %}"></script>
