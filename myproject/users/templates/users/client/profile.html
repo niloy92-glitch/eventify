@@ -1,0 +1,183 @@
+{% extends 'users/client/base.html' %}
+
+{% block title %}Client Profile{% endblock %}
+
+{% block content %}
+<section class="card page-head">
+  <div class="row-between">
+    <div>
+      <h1>Profile</h1>
+      <p class="muted">Your account information.</p>
+    </div>
+    <div style="display: flex; gap: 10px;">
+      <button
+        type="button"
+        class="btn"
+        data-open-edit-profile
+        data-first-name="{{ first_name }}"
+        data-last-name="{{ last_name }}"
+        data-email="{{ email }}"
+        data-phone="{{ phone }}"
+        data-address="{{ address }}"
+      >
+        Edit Profile
+      </button>
+      <button
+        type="button"
+        class="btn danger-btn"
+        data-open-delete-account
+      >
+        Delete Account
+      </button>
+    </div>
+  </div>
+</section>
+
+<section class="card profile-card-panel">
+  <div class="profile-grid">
+    <div>
+      <div class="profile-label">Email</div>
+      <div class="profile-value">{{ email }}</div>
+    </div>
+    <div>
+      <div class="profile-label">First Name</div>
+      <div class="profile-value">{{ first_name }}</div>
+    </div>
+    <div>
+      <div class="profile-label">Last Name</div>
+      <div class="profile-value">{{ last_name }}</div>
+    </div>
+    <div>
+      <div class="profile-label">Phone</div>
+      <div class="profile-value">{{ phone }}</div>
+    </div>
+    <div>
+      <div class="profile-label">Address</div>
+      <div class="profile-value">{{ address }}</div>
+    </div>
+    <div>
+      <div class="profile-label">Joined</div>
+      <div class="profile-value">{{ join_date }}</div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block modal_root %}
+<div class="modal" id="edit-profile-modal" aria-hidden="true">
+  <div class="modal-panel">
+    <h2>Edit Profile</h2>
+    <form class="modal-form" id="edit-profile-form" method="post" action="{% url 'users:client_profile_update' %}">
+      {% csrf_token %}
+
+      <div class="field-grid-2">
+        <div class="field">
+          <label for="edit-profile-first-name">First name</label>
+          <input id="edit-profile-first-name" type="text" name="first_name" />
+        </div>
+        <div class="field">
+          <label for="edit-profile-last-name">Last name</label>
+          <input id="edit-profile-last-name" type="text" name="last_name" />
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="edit-profile-phone">Phone</label>
+        <input id="edit-profile-phone" type="text" name="phone" />
+      </div>
+
+      <div class="field">
+        <label for="edit-profile-address">Address</label>
+        <textarea id="edit-profile-address" name="address" rows="3"></textarea>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn" data-close-modal="edit-profile-modal">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal" id="delete-account-modal" aria-hidden="true">
+  <div class="modal-panel">
+    <h2>Delete Account</h2>
+    <p id="delete-account-text">Are you sure you want to delete your account? This action cannot be undone. You will need to enter your password to confirm.</p>
+    <form id="delete-account-form" method="post" action="{% url 'users:client_delete_account' %}">
+      {% csrf_token %}
+
+      <div class="field">
+        <label for="delete-account-password">Password</label>
+        <input id="delete-account-password" type="password" name="password" required />
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn" data-close-modal="delete-account-modal">Cancel</button>
+        <button type="submit" class="btn danger-btn">Delete Account</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function () {
+  function openModal(modal) {
+    if (!modal) return;
+    modal.classList.add("open");
+    modal.setAttribute("aria-hidden", "false");
+  }
+
+  function closeModal(modal) {
+    if (!modal) return;
+    modal.classList.remove("open");
+    modal.setAttribute("aria-hidden", "true");
+  }
+
+  function initProfileModals() {
+    const editModal = document.getElementById("edit-profile-modal");
+    const deleteModal = document.getElementById("delete-account-modal");
+    const firstNameInput = document.getElementById("edit-profile-first-name");
+    const lastNameInput = document.getElementById("edit-profile-last-name");
+    const phoneInput = document.getElementById("edit-profile-phone");
+    const addressInput = document.getElementById("edit-profile-address");
+    const passwordInput = document.getElementById("delete-account-password");
+
+    document.querySelectorAll("[data-open-edit-profile]").forEach(function (button) {
+      button.addEventListener("click", function () {
+        if (firstNameInput) firstNameInput.value = button.getAttribute("data-first-name") || "";
+        if (lastNameInput) lastNameInput.value = button.getAttribute("data-last-name") || "";
+        if (phoneInput) phoneInput.value = button.getAttribute("data-phone") || "";
+        if (addressInput) addressInput.value = button.getAttribute("data-address") || "";
+        openModal(editModal);
+      });
+    });
+
+    document.querySelectorAll("[data-open-delete-account]").forEach(function (button) {
+      button.addEventListener("click", function () {
+        if (passwordInput) passwordInput.value = "";
+        openModal(deleteModal);
+      });
+    });
+
+    document.querySelectorAll("[data-close-modal]").forEach(function (button) {
+      button.addEventListener("click", function () {
+        const modalId = button.getAttribute("data-close-modal");
+        closeModal(document.getElementById(modalId));
+      });
+    });
+
+    document.querySelectorAll(".modal").forEach(function (modal) {
+      modal.addEventListener("click", function (event) {
+        if (event.target === modal) closeModal(modal);
+      });
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    initProfileModals();
+  });
+})();
+</script>
+{% endblock %}
