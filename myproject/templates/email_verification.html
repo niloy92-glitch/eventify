@@ -1,0 +1,25 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Email Verification - Eventify</title>
+    <link rel="stylesheet" href="{% static 'users/css/style.css' %}" />
+  </head>
+  <body class="auth-page">
+    <main class="page-card page-center">
+      <h1>{{ heading }}</h1>
+      <p>{{ message }}</p>
+      {% if redirect_url %}
+      <a class="page-link-btn" href="{{ redirect_url }}">Go to Login</a>
+      {% else %}
+      <a class="secondary-link" href="{% url 'users:login' %}">Back to Login</a>
+      {% endif %}
+    </main>
+
+    {% if redirect_url %} {% include 'components/toast_redirect.html' with
+    toast_message='Email verification complete.' toast_level='success'
+    redirect_url=redirect_url redirect_delay_ms=1800 %} {% endif %}
+  </body>
+</html>

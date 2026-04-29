@@ -129,6 +129,59 @@
     // Keep native form submit behavior for real backend update/delete actions.
   }
 
+  function initProfileModals() {
+    const editModal = document.getElementById("edit-profile-modal");
+    const deleteModal = document.getElementById("delete-account-modal");
+
+    if (!editModal && !deleteModal) {
+      return;
+    }
+
+    const fieldMap = {
+      "data-first-name": document.getElementById("edit-profile-first-name"),
+      "data-last-name": document.getElementById("edit-profile-last-name"),
+      "data-email": document.getElementById("edit-profile-email"),
+      "data-company-name": document.getElementById("edit-profile-company-name"),
+      "data-phone": document.getElementById("edit-profile-phone"),
+      "data-address": document.getElementById("edit-profile-address"),
+    };
+    const passwordInput = document.getElementById("delete-account-password");
+
+    document.querySelectorAll("[data-open-edit-profile]").forEach(function (button) {
+      button.addEventListener("click", function () {
+        Object.keys(fieldMap).forEach(function (attributeName) {
+          const input = fieldMap[attributeName];
+          if (input) {
+            input.value = button.getAttribute(attributeName) || "";
+          }
+        });
+        openModal(editModal);
+      });
+    });
+
+    document.querySelectorAll("[data-open-delete-account]").forEach(function (button) {
+      button.addEventListener("click", function () {
+        if (passwordInput) {
+          passwordInput.value = "";
+        }
+        openModal(deleteModal);
+      });
+    });
+
+    document.querySelectorAll("[data-close-modal]").forEach(function (button) {
+      button.addEventListener("click", function () {
+        const modalId = button.getAttribute("data-close-modal");
+        closeModal(document.getElementById(modalId));
+      });
+    });
+
+    document.querySelectorAll(".modal").forEach(function (modal) {
+      modal.addEventListener("click", function (event) {
+        if (event.target === modal) closeModal(modal);
+      });
+    });
+  }
+
   function initApprovalActions() {
     const approvalModal = document.getElementById("approval-confirm-modal");
     const modalTitle = document.getElementById("approval-modal-title");
@@ -183,6 +236,7 @@
     togglePopover();
     initFilterButtons();
     initUserModals();
+    initProfileModals();
     initApprovalActions();
   });
 })();

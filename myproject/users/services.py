@@ -749,13 +749,25 @@ def verification_required() -> bool:
 
 # ── Email helpers ────────────────────────────────────────────────────────────
 
+def _email_brand_context() -> dict:
+    return {
+        "brand_name": getattr(settings, "EMAIL_BRAND_NAME", "Eventify"),
+        "brand_primary": getattr(settings, "EMAIL_BRAND_PRIMARY", "#f97316"),
+        "brand_secondary": getattr(settings, "EMAIL_BRAND_SECONDARY", "#10b981"),
+        "brand_bg": getattr(settings, "EMAIL_BRAND_BG", "#fff7ed"),
+        "brand_card": getattr(settings, "EMAIL_BRAND_CARD", "#ffffff"),
+        "brand_text": getattr(settings, "EMAIL_BRAND_TEXT", "#1f2937"),
+        "brand_muted": getattr(settings, "EMAIL_BRAND_MUTED", "#6b7280"),
+    }
+
 def _do_send_verification_email(user, verify_url: str) -> None:
     """Send verification email and raise/log on failures."""
-    brand_name = getattr(settings, "EMAIL_BRAND_NAME", "Eventify")
-    html_body = render_to_string("users/email_verification.html", {
+    brand_context = _email_brand_context()
+    brand_name = brand_context["brand_name"]
+    html_body = render_to_string("email_verification.html", {
         "user": user,
         "verify_url": verify_url,
-        "brand_name": brand_name,
+        **brand_context,
     })
     plain_body = (
         f"Welcome to {brand_name}!\n\n"

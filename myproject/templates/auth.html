@@ -135,15 +135,25 @@
             </div>
 
             <div class="row-between auth-row-utility">
-              <label
-                class="remember remember-no-margin"
-                for="auth-remember"
-              >
-                <input id="auth-remember" name="remember" type="checkbox" {% if form_values.login_remember %}checked{% endif %} /> Remember me
+              <label class="remember remember-no-margin" for="auth-remember">
+                <input
+                  id="auth-remember"
+                  name="remember"
+                  type="checkbox"
+                  {%
+                  if
+                  form_values.login_remember
+                  %}checked{%
+                  endif
+                  %}
+                />
+                Remember me
               </label>
-              <a class="muted" href="{% url 'users:password_reset' %}">Forgot password?</a>
+              <a class="muted" href="{% url 'users:password_reset' %}"
+                >Forgot password?</a
+              >
             </div>
-            
+
             <button class="submit-btn" type="submit">Sign In</button>
             <div class="auth-divider">OR</div>
             <div class="auth-socials">
@@ -152,7 +162,27 @@
                 <span>{{ google_label }}</span>
               </button>
             </div>
-            <p class="status-text" aria-live="polite"{% if status_level == 'error' %} style="color: var(--red);"{% elif status_level == 'success' %} style="color: var(--teal);"{% endif %}>{{ status_message }}</p>
+            <p
+              class="status-text"
+              aria-live="polite"
+              {%
+              if
+              status_level=""
+              ="error"
+              %}
+              style="color: var(--red)"
+              {%
+              elif
+              status_level=""
+              ="success"
+              %}
+              style="color: var(--teal)"
+              {%
+              endif
+              %}
+            >
+              {{ status_message }}
+            </p>
             <p class="auth-footer">
               <a
                 id="auth-role-link"
@@ -370,7 +400,27 @@
                 <span>{{ google_label }}</span>
               </button>
             </div>
-            <p class="status-text" aria-live="polite"{% if status_level == 'error' %} style="color: var(--red);"{% elif status_level == 'success' %} style="color: var(--teal);"{% endif %}>{{ status_message }}</p>
+            <p
+              class="status-text"
+              aria-live="polite"
+              {%
+              if
+              status_level=""
+              ="error"
+              %}
+              style="color: var(--red)"
+              {%
+              elif
+              status_level=""
+              ="success"
+              %}
+              style="color: var(--teal)"
+              {%
+              endif
+              %}
+            >
+              {{ status_message }}
+            </p>
             <p class="auth-footer">
               <a
                 id="auth-role-link"
@@ -393,7 +443,6 @@
       </main>
     </div>
     <script src="{% static 'users/js/toast.js' %}"></script>
-    <script src="{% static 'users/js/password_toggle.js' %}"></script>
     <script src="{% static 'users/js/auth.js' %}"></script>
   </body>
 </html>

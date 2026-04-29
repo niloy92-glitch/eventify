@@ -3,12 +3,36 @@ from pathlib import Path
 import dj_database_url
 from dotenv import load_dotenv
 
-from .env import env_bool, env_first, env_int, env_str
+from os import getenv
 
 
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 load_dotenv(BASE_DIR.parent / ".env")
+
+
+def env_bool(name: str, default: bool = False) -> bool:
+    return getenv(name, str(default)).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def env_int(name: str, default: int) -> int:
+    try:
+        return int(getenv(name, str(default)))
+    except (TypeError, ValueError):
+        return default
+
+
+def env_str(name: str, default: str = "") -> str:
+    return getenv(name, default)
+
+
+def env_first(names: list[str], default: str = "") -> str:
+    for name in names:
+        value = getenv(name)
+        if value:
+            return value
+    return default
+
 
 SECRET_KEY = env_str("DJANGO_SECRET_KEY", "django-insecure-dev-key")
 DEBUG = env_bool("DEBUG", True)
@@ -39,7 +63,7 @@ ROOT_URLCONF = "myproject.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [BASE_DIR / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -54,6 +78,9 @@ TEMPLATES = [
 WSGI_APPLICATION = "myproject.wsgi.application"
 ASGI_APPLICATION = "myproject.asgi.application"
 
+# Database
+# Use DATABASE_URL for hosted environments.
+# Set USE_SQLITE=1 for a local SQLite database.
 USE_SQLITE = env_bool("USE_SQLITE", False)
 DATABASE_URL = env_str("DATABASE_URL", "")
 

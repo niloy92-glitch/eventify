@@ -1,73 +1,39 @@
-{% load static %}
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{% block title %}Admin Console{% endblock %}</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="stylesheet" href="{% static 'users/css/style.css' %}" />
-    <link rel="stylesheet" href="{% static 'users/css/admin_dashboard.css' %}" />
-    {% block extra_head %}{% endblock %}
-  </head>
-  <body class="admin-body" data-require-role="admin">
-    <div class="admin-layout">
-      <aside class="admin-sidebar" aria-label="Primary">
-        <a class="logo-link sidebar-logo" href="{% url 'users:admin_dashboard' %}">Event<span>ify</span></a>
+{% extends 'users/base_dashboard.html' %}
 
-        <a class="sidebar-user profile-card" href="{{ admin_profile_url }}">
-          <div class="sidebar-user-avatar" aria-hidden="true">{{ initials }}</div>
-          <div>
-            <p class="sidebar-user-name">{{ user_name }}</p>
-            <p class="sidebar-user-role">Admin</p>
-          </div>
-        </a>
+{% block title %}Admin Console{% endblock %}
 
-        <nav class="sidebar-nav nav-links" aria-label="Admin navigation">
-          {% for link in admin_nav_links %}
-            <a class="nav-link{% if link.active %} active{% endif %}" href="{{ link.href }}">{{ link.label }}</a>
-          {% endfor %}
-        </nav>
+{% block body_role %}admin{% endblock %}
 
-        <div class="sidebar-bottom nav-tools">
-          <div class="notification-wrap">
-            <button
-              class="icon-btn"
-              type="button"
-              id="notification-toggle"
-              aria-haspopup="true"
-              aria-expanded="false"
-              aria-controls="notification-popover"
-            >
-              Notifications
-            </button>
-            <div class="notification-popover" id="notification-popover" hidden>
-              <p class="notification-title">Latest Alerts</p>
-              <ul>
-                {% for notification in notification_items %}
-                  <li>{{ notification }}</li>
-                {% endfor %}
-              </ul>
-            </div>
-          </div>
+{% block sidebar_logo %}
+  <a class="logo-link sidebar-logo" href="{% url 'users:admin_dashboard' %}">Event<span>ify</span></a>
+{% endblock %}
 
-          <form action="{% url 'users:logout' %}" method="post">
-            {% csrf_token %}
-            <button class="btn btn-accent sidebar-logout" type="submit">Logout</button>
-          </form>
-        </div>
-      </aside>
-
-      <main class="admin-main" role="main">
-        {% block content %}{% endblock %}
-      </main>
+{% block sidebar_profile %}
+  <a class="sidebar-user profile-card" href="{{ admin_profile_url }}">
+    <div class="sidebar-user-avatar" aria-hidden="true">{{ initials }}</div>
+    <div>
+      <p class="sidebar-user-name">{{ user_name }}</p>
+      <p class="sidebar-user-role">Admin</p>
     </div>
+  </a>
+{% endblock %}
 
-    {% block modal_root %}{% endblock %}
+{% block sidebar_nav %}
+  {% for link in admin_nav_links %}
+    <a class="nav-link{% if link.active %} active{% endif %}" href="{{ link.href }}">{{ link.label }}</a>
+  {% endfor %}
+{% endblock %}
 
-    <script src="{% static 'users/js/toast.js' %}"></script>
-    <script src="{% static 'users/js/admin_dashboard.js' %}"></script>
-    {% block extra_scripts %}{% endblock %}
-  </body>
-</html>
+{% block notification_items %}
+  {% for notification in notification_items %}
+    <li>{{ notification }}</li>
+  {% endfor %}
+{% endblock %}
+
+{% block content %}
+  {% block admin_content %}{% endblock %}
+{% endblock %}
+
+{% block modal_root %}{% endblock %}
+
+{% block extra_scripts %}{% endblock %}

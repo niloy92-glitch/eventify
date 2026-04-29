@@ -1,0 +1,63 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="{% static 'users/css/style.css' %}" />
+    <link rel="stylesheet" href="{% static 'users/css/admin_dashboard.css' %}" />
+    {% block extra_head %}{% endblock %}
+  </head>
+  <body class="admin-body" data-require-role="{% block body_role %}{% endblock %}">
+    <div class="admin-layout">
+      <aside class="admin-sidebar" aria-label="Primary">
+        {% block sidebar_logo %}{% endblock %}
+
+        {% block sidebar_profile %}{% endblock %}
+
+        <nav class="sidebar-nav nav-links" aria-label="Primary navigation">
+          {% block sidebar_nav %}{% endblock %}
+        </nav>
+
+        <div class="sidebar-bottom nav-tools">
+          <div class="notification-wrap">
+            <button
+              class="icon-btn"
+              type="button"
+              id="notification-toggle"
+              aria-haspopup="true"
+              aria-expanded="false"
+              aria-controls="notification-popover"
+            >
+              Notifications
+            </button>
+            <div class="notification-popover" id="notification-popover" hidden>
+              <p class="notification-title">Latest Alerts</p>
+              <ul>
+                {% block notification_items %}{% endblock %}
+              </ul>
+            </div>
+          </div>
+
+          <form action="{% url 'users:logout' %}" method="post">
+            {% csrf_token %}
+            <button class="btn btn-accent sidebar-logout" type="submit">Logout</button>
+          </form>
+        </div>
+      </aside>
+
+      <main class="admin-main" role="main">
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+
+    {% block modal_root %}{% endblock %}
+
+    <script src="{% static 'users/js/toast.js' %}"></script>
+    <script src="{% static 'users/js/admin_dashboard.js' %}"></script>
+    {% block extra_scripts %}{% endblock %}
+  </body>
+</html>

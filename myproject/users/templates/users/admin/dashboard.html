@@ -1,11 +1,10 @@
-{% extends 'users/admin/base.html' %}
-
-{% block title %}Admin Dashboard{% endblock %}
-
-{% block content %}
+{% extends 'users/admin/base.html' %} {% block title %}Admin Dashboard{%
+endblock %} {% block content %}
 <section class="card page-head">
   <h1>Dashboard</h1>
-  <p class="muted">A quick overview of users, services, and event performance.</p>
+  <p class="muted">
+    A quick overview of users, services, and event performance.
+  </p>
 </section>
 
 <section class="stats-grid">
@@ -46,7 +45,9 @@
 <section class="card">
   <div class="row-between section-head">
     <h2>Recent Activities</h2>
-    <a class="btn" href="{% url 'users:admin_activity_logs' %}">Full Activity Logs</a>
+    <a class="btn" href="{% url 'users:admin_activity_logs' %}"
+      >Full Activity Logs</a
+    >
   </div>
   <div class="table-wrap">
     <table>
@@ -59,15 +60,15 @@
       </thead>
       <tbody>
         {% for row in recent_activities %}
-          <tr>
-            <td>{{ row.actor }}</td>
-            <td>{{ row.action }}</td>
-            <td>{{ row.timestamp }}</td>
-          </tr>
+        <tr>
+          <td>{{ row.actor }}</td>
+          <td>{{ row.action }}</td>
+          <td>{{ row.timestamp }}</td>
+        </tr>
         {% empty %}
-          <tr>
-            <td colspan="3">No recent activities found.</td>
-          </tr>
+        <tr>
+          <td colspan="3">No recent activities found.</td>
+        </tr>
         {% endfor %}
       </tbody>
     </table>
