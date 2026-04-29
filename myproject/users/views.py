@@ -105,7 +105,7 @@ def login_page(request: HttpRequest) -> HttpResponse:
 
     active_role = normalize_role(request.POST.get("role") if request.method == "POST" else request.GET.get("role"))
     if request.method == "GET":
-        return render(request, "users/auth.html", auth_context(request, "login", active_role=active_role))
+        return render(request, "auth.html", auth_context(request, "login", active_role=active_role))
 
     form = LoginForm.from_post_data(request.POST, active_role)
     if not form.is_valid():
@@ -116,7 +116,7 @@ def login_page(request: HttpRequest) -> HttpResponse:
             form_values=_auth_form_values_from_post(request.POST),
         )
         context.update({"status_message": _first_form_error(form), "status_level": "error"})
-        return render(request, "users/auth.html", context, status=400)
+        return render(request, "auth.html", context, status=400)
 
     email = form.cleaned_data["email"]
     password = form.cleaned_data["password"]
@@ -131,7 +131,7 @@ def login_page(request: HttpRequest) -> HttpResponse:
             form_values=_auth_form_values_from_post(request.POST),
         )
         context.update({"status_message": "No user found.", "status_level": "error"})
-        return render(request, "users/auth.html", context, status=404)
+        return render(request, "auth.html", context, status=404)
 
     user = authenticate(request, username=email, password=password)
     if not user:
@@ -142,7 +142,7 @@ def login_page(request: HttpRequest) -> HttpResponse:
             form_values=_auth_form_values_from_post(request.POST),
         )
         context.update({"status_message": "Invalid credentials.", "status_level": "error"})
-        return render(request, "users/auth.html", context, status=401)
+        return render(request, "auth.html", context, status=401)
     if is_django_admin_user(user):
         context = auth_context(
             request,
@@ -151,7 +151,7 @@ def login_page(request: HttpRequest) -> HttpResponse:
             form_values=_auth_form_values_from_post(request.POST),
         )
         context.update({"status_message": "Use Django admin for this account.", "status_level": "error"})
-        return render(request, "users/auth.html", context, status=403)
+        return render(request, "auth.html", context, status=403)
     if user.role != role:
         context = auth_context(
             request,
@@ -160,7 +160,7 @@ def login_page(request: HttpRequest) -> HttpResponse:
             form_values=_auth_form_values_from_post(request.POST),
         )
         context.update({"status_message": "No user found.", "status_level": "error"})
-        return render(request, "users/auth.html", context, status=404)
+        return render(request, "auth.html", context, status=404)
     if verification_required() and not user.email_verified:
         context = auth_context(
             request,
@@ -169,7 +169,7 @@ def login_page(request: HttpRequest) -> HttpResponse:
             form_values=_auth_form_values_from_post(request.POST),
         )
         context.update({"status_message": "Please verify your email first. Check your inbox.", "status_level": "error"})
-        return render(request, "users/auth.html", context, status=403)
+        return render(request, "auth.html", context, status=403)
 
     login(request, user)
     request.session.set_expiry(60 * 60 * 24 * 14 if remember else 0)
@@ -184,7 +184,7 @@ def register_page(request: HttpRequest) -> HttpResponse:
 
     active_role = normalize_role(request.POST.get("role") if request.method == "POST" else request.GET.get("role"))
     if request.method == "GET":
-        return render(request, "users/auth.html", auth_context(request, "register", active_role=active_role))
+        return render(request, "auth.html", auth_context(request, "register", active_role=active_role))
 
     form = RegisterForm.from_post_data(request.POST, active_role)
     if not form.is_valid():
@@ -197,7 +197,7 @@ def register_page(request: HttpRequest) -> HttpResponse:
         )
         context.update({"status_message": error_message, "status_level": "error"})
         status_code = 403 if "referral" in error_message.lower() else 400
-        return render(request, "users/auth.html", context, status=status_code)
+        return render(request, "auth.html", context, status=status_code)
 
     role = form.cleaned_data["role"]
     user = create_user_from_registration(form.cleaned_data, verification_required())
@@ -223,7 +223,7 @@ def verify_email(request: HttpRequest, uidb64: str, token: str) -> HttpResponse:
         user_id = force_str(urlsafe_base64_decode(uidb64))
         user = User.objects.get(pk=user_id)
     except (TypeError, ValueError, OverflowError, User.DoesNotExist):
-        return render(request, "users/verification_result.html", {
+        return render(request, "verification_result.html", {
             "success": False,
             "heading": "Verification Failed",
             "message": "This verification link is invalid or has expired.",
@@ -233,7 +233,7 @@ def verify_email(request: HttpRequest, uidb64: str, token: str) -> HttpResponse:
         if not user.email_verified:
             user.email_verified = True
             user.save(update_fields=["email_verified"])
-        return render(request, "users/verification_result.html", {
+        return render(request, "verification_result.html", {
             "success": True,
             "heading": "Email Verified!",
             "message": "Your email has been successfully verified. Redirecting to login…",
@@ -243,7 +243,7 @@ def verify_email(request: HttpRequest, uidb64: str, token: str) -> HttpResponse:
             ),
         })
 
-    return render(request, "users/verification_result.html", {
+    return render(request, "verification_result.html", {
         "success": False,
         "heading": "Verification Failed",
         "message": "This verification link is invalid or has expired.",
@@ -487,7 +487,7 @@ def vendor_profile_update_view(request: HttpRequest) -> HttpResponse:
     user.address = address
     user.save()
 
-    return redirect("users:vendor_profile")
+    return redirect(add_auth_notice(reverse("users:vendor_profile"), AUTH_MESSAGE_KEYS["user_updated"]))
 
 
 @login_required(login_url="users:login")
@@ -501,11 +501,11 @@ def vendor_delete_account_view(request: HttpRequest) -> HttpResponse:
     user = request.user
 
     if not user.check_password(password):
-        return redirect(add_auth_notice(reverse("users:vendor_profile"), "user_update_failed"))
+        return redirect(add_auth_notice(reverse("users:vendor_profile"), AUTH_MESSAGE_KEYS["user_delete_failed"]))
 
     logout(request)
     user.delete()
-    return redirect("users:login")
+    return redirect(add_auth_notice(f"{reverse('users:login')}?role=vendor", AUTH_MESSAGE_KEYS["user_deleted"]))
 
 
 
@@ -520,10 +520,6 @@ def client_messages_view(request: HttpRequest) -> HttpResponse:
     context = client_base_context(request, "messages")
     context.update({"page_name": "Messages"})
     return render(request, "users/client/placeholder.html", context)
-
-
-@login_required(login_url="users:login")
-@require_GET
 @login_required(login_url="users:login")
 @require_GET
 def client_profile_view(request: HttpRequest) -> HttpResponse:
@@ -564,7 +560,7 @@ def client_profile_update_view(request: HttpRequest) -> HttpResponse:
     user.address = address
     user.save()
 
-    return redirect("users:client_profile")
+    return redirect(add_auth_notice(reverse("users:client_profile"), AUTH_MESSAGE_KEYS["user_updated"]))
 
 
 @login_required(login_url="users:login")
@@ -578,11 +574,11 @@ def client_delete_account_view(request: HttpRequest) -> HttpResponse:
     user = request.user
 
     if not user.check_password(password):
-        return redirect(add_auth_notice(reverse("users:client_profile"), "user_update_failed"))
+        return redirect(add_auth_notice(reverse("users:client_profile"), AUTH_MESSAGE_KEYS["user_delete_failed"]))
 
     logout(request)
     user.delete()
-    return redirect("users:login")
+    return redirect(add_auth_notice(f"{reverse('users:login')}?role=client", AUTH_MESSAGE_KEYS["user_deleted"]))
 
 
 @login_required(login_url="users:login")

@@ -1,0 +1,10 @@
+{% extends 'users/base_dashboard.html' %}
+
+{% block content %}
+  <section class="profile-section">
+    {% block profile_header %}{% endblock %}
+    <div class="profile-grid">
+      {% block profile_content %}{% endblock %}
+    </div>
+  </section>
+{% endblock %}

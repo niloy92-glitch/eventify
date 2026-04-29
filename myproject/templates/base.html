@@ -13,10 +13,14 @@
   <body data-require-role="{{ role }}">
     <header class="navbar">
       <div class="nav-inner">
-        <a class="logo-link" href="{{ dashboard_url }}">Event<span>ify</span></a>
+        <a class="logo-link" href="{{ dashboard_url }}"
+          >Event<span>ify</span></a
+        >
 
         <section class="sidebar-user" aria-label="Current user">
-          <div class="sidebar-user-avatar" aria-hidden="true">{{ initials }}</div>
+          <div class="sidebar-user-avatar" aria-hidden="true">
+            {{ initials }}
+          </div>
           <div>
             <p class="sidebar-user-name">{{ user_name }}</p>
             <p class="sidebar-user-role">{{ role|title }}</p>
@@ -25,13 +29,19 @@
 
         <nav class="nav-links nav-center" aria-label="Dashboard navigation">
           {% for link in nav_links %}
-            <a class="nav-link{% if link.active %} active{% endif %}" href="{{ link.href }}">{{ link.label }}</a>
+          <a
+            class="nav-link{% if link.active %} active{% endif %}"
+            href="{{ link.href }}"
+            >{{ link.label }}</a
+          >
           {% endfor %}
         </nav>
 
         <div class="nav-tools">
           <div class="sidebar-notification">
-            <div class="sidebar-notification-title">{{ notification_title }}</div>
+            <div class="sidebar-notification-title">
+              {{ notification_title }}
+            </div>
             <div class="sidebar-notification-text">{{ notification_text }}</div>
           </div>
 
@@ -43,8 +53,6 @@
       </div>
     </header>
 
-    <main class="main container">
-      {% block content %}{% endblock %}
-    </main>
+    <main class="main container">{% block content %}{% endblock %}</main>
   </body>
 </html>

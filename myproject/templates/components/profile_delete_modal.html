@@ -1,0 +1,19 @@
+<div class="modal" id="delete-account-modal" aria-hidden="true">
+  <div class="modal-panel">
+    <h2>Delete Account</h2>
+    <p id="delete-account-text">Are you sure you want to delete your account? This action cannot be undone. You will need to enter your password to confirm.</p>
+    <form id="delete-account-form" method="post" action="{{ delete_action }}">
+      {% csrf_token %}
+
+      <div class="field">
+        <label for="delete-account-password">Password</label>
+        <input id="delete-account-password" type="password" name="password" required />
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn" data-close-modal="delete-account-modal">Cancel</button>
+        <button type="submit" class="btn danger-btn">Delete Account</button>
+      </div>
+    </form>
+  </div>
+</div>
