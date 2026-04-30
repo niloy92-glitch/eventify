@@ -421,9 +421,9 @@ def vendor_services_view(request: HttpRequest) -> HttpResponse:
     if redirect_response is not None:
         return redirect_response
 
-    context = vendor_base_context(request, "services")
-    context.update({"page_name": "Services"})
-    return render(request, "users/vendor/placeholder.html", context)
+    # redirect to services app vendor list
+    from django.shortcuts import redirect
+    return redirect("services:vendor_services")
 
 
 @login_required(login_url="users:login")
@@ -676,7 +676,7 @@ def admin_approval_update_view(request: HttpRequest) -> HttpResponse:
     if filtered_params:
         redirect_url = f"{redirect_url}?{urlencode(filtered_params)}"
 
-    if decision not in {"approve", "reject"} or request_type != "vendor" or not request_id.isdigit():
+    if decision not in {"approve", "reject"} or request_type not in {"vendor", "service"} or not request_id.isdigit():
         return redirect(add_auth_notice(redirect_url, AUTH_MESSAGE_KEYS["approval_update_failed"]))
 
     target_status = ApprovalStatusChoices.ALLOWED if decision == "approve" else ApprovalStatusChoices.REJECTED
@@ -685,6 +685,16 @@ def admin_approval_update_view(request: HttpRequest) -> HttpResponse:
         vendor = get_object_or_404(User, pk=int(request_id), role="vendor")
         vendor.vendor_approval_status = target_status
         vendor.save(update_fields=["vendor_approval_status"])
+    else:
+        from services.models import ApprovalRequest
+
+        approval_request = get_object_or_404(ApprovalRequest, pk=int(request_id), request_type="service")
+        approval_request.status = target_status
+        approval_request.save(update_fields=["status"])
+
+        service = approval_request.service
+        service.is_approved = target_status == ApprovalStatusChoices.ALLOWED
+        service.save(update_fields=["is_approved"])
 
     return redirect(add_auth_notice(redirect_url, AUTH_MESSAGE_KEYS["approval_updated"]))
 

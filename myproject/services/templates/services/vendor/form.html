@@ -1,0 +1,57 @@
+{% extends 'users/vendor/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_name }}{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'services/css/services.css' %}" />
+{% endblock %}
+
+{% block vendor_content %}
+<section class="card page-head">
+  <h1>{{ page_name }}</h1>
+</section>
+
+<section class="card">
+  <form method="post" class="service-form">
+    {% csrf_token %}
+
+    <div class="form-field">
+      <label for="{{ form.name.id_for_label }}">Service Name *</label>
+      {{ form.name }}
+      {% if form.name.errors %}
+        <div class="form-error">{{ form.name.errors.0 }}</div>
+      {% endif %}
+    </div>
+
+    <div class="form-field">
+      <label for="{{ form.service_type.id_for_label }}">Service Type *</label>
+      {{ form.service_type }}
+      {% if form.service_type.errors %}
+        <div class="form-error">{{ form.service_type.errors.0 }}</div>
+      {% endif %}
+    </div>
+
+    <div class="form-field">
+      <label for="{{ form.price.id_for_label }}">Price (BDT)</label>
+      {{ form.price }}
+      {% if form.price.errors %}
+        <div class="form-error">{{ form.price.errors.0 }}</div>
+      {% endif %}
+    </div>
+
+    <div class="form-field">
+      <label for="{{ form.description.id_for_label }}">Description</label>
+      {{ form.description }}
+      {% if form.description.errors %}
+        <div class="form-error">{{ form.description.errors.0 }}</div>
+      {% endif %}
+    </div>
+
+    <div class="form-actions">
+      <a class="btn" href="{% url 'services:vendor_services' %}">Cancel</a>
+      <button class="btn btn-primary" type="submit">Save Service</button>
+    </div>
+  </form>
+</section>
+{% endblock %}

@@ -1,0 +1,59 @@
+<div class="modal" id="service-detail-modal" aria-hidden="true">
+  <div class="modal-panel service-detail-panel">
+    <div class="service-detail-header">
+      <div class="service-detail-title-area">
+        <div class="service-detail-badge" id="service-detail-icon" aria-hidden="true">★</div>
+        <div>
+          <h2 id="service-detail-title">Service Title</h2>
+          <p id="service-detail-company" class="service-detail-company">Company</p>
+        </div>
+      </div>
+      <button type="button" class="service-detail-close" data-close-modal="service-detail-modal" aria-label="Close">×</button>
+    </div>
+
+    <p id="service-detail-type" class="service-detail-type-label">Type</p>
+
+    <div class="service-detail-layout">
+      <section class="service-detail-summary">
+        <div id="service-detail-desc" class="service-detail-description"></div>
+      </section>
+
+      <section class="service-calendar-panel" aria-label="Booking calendar">
+        <div class="service-calendar-header-row">
+          <h3 id="service-calendar-label" class="service-calendar-title">Availability</h3>
+          
+          <div class="service-calendar-controls">
+            <button type="button" class="calendar-nav-btn" data-calendar-nav="prev" aria-label="Previous month">Prev</button>
+            <button type="button" class="calendar-nav-btn" data-calendar-nav="today">Today</button>
+            <button type="button" class="calendar-nav-btn" data-calendar-nav="next" aria-label="Next month">Next</button>
+          </div>
+
+          <div class="calendar-select-group">
+            <select id="service-calendar-month"></select>
+          </div>
+          <div class="calendar-select-group">
+            <select id="service-calendar-year"></select>
+          </div>
+        </div>
+
+        <div class="service-calendar" id="service-calendar-root">
+          <div class="calendar-weekdays" aria-hidden="true">
+            <span>Sun</span>
+            <span>Mon</span>
+            <span>Tue</span>
+            <span>Wed</span>
+            <span>Thu</span>
+            <span>Fri</span>
+            <span>Sat</span>
+          </div>
+          <div
+            class="calendar-grid"
+            id="service-calendar-grid"
+            role="grid"
+            aria-label="Month view calendar"
+          ></div>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>

@@ -52,17 +52,18 @@
     });
   }
 
-  function openModal(modal) {
+  // Make these global so other scripts can access them
+  window.openModal = function (modal) {
     if (!modal) return;
     modal.classList.add("open");
     modal.setAttribute("aria-hidden", "false");
-  }
+  };
 
-  function closeModal(modal) {
+  window.closeModal = function (modal) {
     if (!modal) return;
     modal.classList.remove("open");
     modal.setAttribute("aria-hidden", "true");
-  }
+  };
 
   function initUserModals() {
     const editModal = document.getElementById("edit-user-modal");
