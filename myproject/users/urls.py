@@ -11,6 +11,7 @@ urlpatterns = [
     path("", views.root_redirect, name="root"),
     path("login/", views.login_page, name="login"),
     path("register/", views.register_page, name="register"),
+    path("resend-verification-email/", views.resend_verification_email_view, name="resend_verification_email"),
     path("auth/google/start/", views.google_oauth_start, name="google_oauth_start"),
     path("auth/google/callback/", views.google_oauth_callback, name="google_oauth_callback"),
     path("verify-email/<uidb64>/<token>/", views.verify_email, name="verify_email"),

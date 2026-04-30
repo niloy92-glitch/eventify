@@ -793,9 +793,11 @@ def _do_send_verification_email(user, verify_url: str) -> None:
     """Send verification email and raise/log on failures."""
     brand_context = _email_brand_context()
     brand_name = brand_context["brand_name"]
-    html_body = render_to_string("email_verification.html", {
+    html_body = render_to_string("emails/verification_email.html", {
         "user": user,
         "verify_url": verify_url,
+        "heading": "Verify your email address",
+        "message": "Click the button below to confirm your account and finish setting up Eventify.",
         **brand_context,
     })
     plain_body = (

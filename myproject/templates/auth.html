@@ -182,6 +182,9 @@
               %}
             >
               {{ status_message }}
+              {% if resend_verification_url %}
+                <a class="muted" href="{{ resend_verification_url }}">Resend verification email</a>
+              {% endif %}
             </p>
             <p class="auth-footer">
               <a
@@ -420,6 +423,9 @@
               %}
             >
               {{ status_message }}
+              {% if resend_verification_url %}
+                <a class="muted" href="{{ resend_verification_url }}">Resend verification email</a>
+              {% endif %}
             </p>
             <p class="auth-footer">
               <a

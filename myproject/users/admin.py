@@ -7,8 +7,8 @@ from .models import EventUser, RoleChoices
 @admin.register(EventUser)
 class EventUserAdmin(UserAdmin):
 	ordering = ("email",)
-	list_display = ("email", "role", "is_staff", "is_active")
-	search_fields = ("email", "first_name", "last_name", "company_name")
+	list_display = ("email", "role", "email_verified", "is_staff", "is_active")
+	search_fields = ("email", "email_verified", "first_name", "last_name", "company_name")
 	list_filter = ("role", "vendor_approval_status", "is_staff", "is_superuser", "is_active")
 
 	fieldsets = (
@@ -19,6 +19,7 @@ class EventUserAdmin(UserAdmin):
 				"fields": (
 					"role",
 					"vendor_approval_status",
+                    "email_verified",
 					"first_name",
 					"last_name",
 					"company_name",
@@ -41,27 +42,6 @@ class EventUserAdmin(UserAdmin):
 			},
 		),
 	)
-
-
-# @admin.register(Client)
-# class ClientAdmin(admin.ModelAdmin):
-# 	list_display = ("first_name", "last_name", "email", "role")
-# 	search_fields = ("first_name", "last_name", "email")
-# 	readonly_fields = tuple(field.name for field in Client._meta.fields)
-
-
-# @admin.register(Vendor)
-# class VendorAdmin(admin.ModelAdmin):
-# 	list_display = ("company_name", "email", "role")
-# 	search_fields = ("company_name", "email")
-# 	readonly_fields = tuple(field.name for field in Vendor._meta.fields)
-
-
-# @admin.register(AdminUser)
-# class AdminUserAdmin(admin.ModelAdmin):
-# 	list_display = ("first_name", "last_name", "email", "role", "referral_code")
-# 	search_fields = ("first_name", "last_name", "email", "referral_code")
-# 	readonly_fields = tuple(field.name for field in AdminUser._meta.fields)
 
 
 admin.site.empty_value_display = "-"

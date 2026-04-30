@@ -44,6 +44,7 @@ from .services import (
 
 
 User = get_user_model()
+VERIFICATION_REQUIRED_MESSAGE = "Please verify your email first. Check your inbox."
 
 
 def _first_form_error(form) -> str:
@@ -56,6 +57,14 @@ def _first_form_error(form) -> str:
 
 def _bool_from_post(value: str | None) -> bool:
     return str(value or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _resend_verification_url(email: str, role: str) -> str | None:
+    safe_email = str(email or "").strip().lower()
+    if not safe_email:
+        return None
+    query = urlencode({"email": safe_email, "role": normalize_role(role)})
+    return f"{reverse('users:resend_verification_email')}?{query}"
 
 
 def _auth_form_values_from_post(post_data: dict) -> dict:
@@ -105,7 +114,20 @@ def login_page(request: HttpRequest) -> HttpResponse:
 
     active_role = normalize_role(request.POST.get("role") if request.method == "POST" else request.GET.get("role"))
     if request.method == "GET":
-        return render(request, "auth.html", auth_context(request, "login", active_role=active_role))
+        context = auth_context(request, "login", active_role=active_role)
+        notice_message = str(request.GET.get("auth_message", "")).strip()
+        if notice_message:
+            context.update(
+                {
+                    "status_message": notice_message,
+                    "status_level": str(request.GET.get("auth_level", "info")).strip() or "info",
+                }
+            )
+            if notice_message == VERIFICATION_REQUIRED_MESSAGE:
+                resend_url = _resend_verification_url(request.GET.get("email", ""), active_role)
+                if resend_url:
+                    context["resend_verification_url"] = resend_url
+        return render(request, "auth.html", context)
 
     form = LoginForm.from_post_data(request.POST, active_role)
     if not form.is_valid():
@@ -168,7 +190,15 @@ def login_page(request: HttpRequest) -> HttpResponse:
             active_role=role,
             form_values=_auth_form_values_from_post(request.POST),
         )
-        context.update({"status_message": "Please verify your email first. Check your inbox.", "status_level": "error"})
+        context.update(
+            {
+                "status_message": VERIFICATION_REQUIRED_MESSAGE,
+                "status_level": "error",
+            }
+        )
+        resend_url = _resend_verification_url(email, role)
+        if resend_url:
+            context["resend_verification_url"] = resend_url
         return render(request, "auth.html", context, status=403)
 
     login(request, user)
@@ -206,7 +236,7 @@ def register_page(request: HttpRequest) -> HttpResponse:
         send_verification_email(request, user)
         return redirect(
             add_auth_notice(
-                f"{reverse('users:login')}?role={role}",
+                f"{reverse('users:login')}?{urlencode({'role': role, 'email': user.email})}",
                 AUTH_MESSAGE_KEYS["verification_required"],
             )
         )
@@ -248,6 +278,27 @@ def verify_email(request: HttpRequest, uidb64: str, token: str) -> HttpResponse:
         "heading": "Verification Failed",
         "message": "This verification link is invalid or has expired.",
     })
+
+
+@require_GET
+def resend_verification_email_view(request: HttpRequest) -> HttpResponse:
+    role = normalize_role(request.GET.get("role"))
+    email = str(request.GET.get("email", "")).strip().lower()
+
+    if email and verification_required():
+        user = User.objects.filter(email__iexact=email, email_verified=False).first()
+        if user:
+            send_verification_email(request, user)
+
+    query = urlencode(
+        {
+            "role": role,
+            "email": email,
+            "auth_level": "success",
+            "auth_message": "If an unverified account exists for this email, a verification link has been sent.",
+        }
+    )
+    return redirect(f"{reverse('users:login')}?{query}")
 
 
 # ── Google OAuth ─────────────────────────────────────────────────────────────
@@ -338,7 +389,7 @@ def google_oauth_callback(request: HttpRequest) -> HttpResponse:
         else:
             send_verification_email(request, user)
             return redirect(add_auth_notice(
-                f"{reverse('users:login')}?role={user.role}",
+                f"{reverse('users:login')}?{urlencode({'role': user.role, 'email': user.email})}",
                 AUTH_MESSAGE_KEYS["verification_required"],
             ))
 
