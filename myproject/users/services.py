@@ -490,6 +490,11 @@ def client_base_context(request: HttpRequest, active_menu: str) -> dict:
             "active": active_menu == "dashboard",
         },
         {
+            "label": "Home",
+            "href": reverse("services:services_home"),
+            "active": active_menu == "home",
+        },
+        {
             "label": "My Events",
             "href": reverse("users:client_my_events"),
             "active": active_menu == "my_events",
@@ -664,6 +669,30 @@ def admin_approvals_data(filter_key: str = "all", from_date: str = "", to_date: 
             }
         )
 
+    # include service approval requests if the services app is present
+    try:
+        from services.models import ApprovalRequest
+
+        svc_requests = ApprovalRequest.objects.select_related("service", "vendor").all()
+        for req in svc_requests:
+            rows.append(
+                {
+                    "request_type": "service",
+                    "request_id": req.pk,
+                    "vendor_name": req.vendor.company_name or _display_name(req.vendor),
+                    "vendor_approved": True,
+                    "service_name": getattr(req.service, "name", "N/A"),
+                    "service_type": getattr(req.service, "service_type", "N/A"),
+                    "status": req.status,
+                    "status_label": req.get_status_display(),
+                    "status_badge": approval_status_badge(req.status),
+                    "created_at_dt": timezone.localtime(req.created_at),
+                }
+            )
+    except Exception:
+        # services app not available or model missing; skip
+        pass
+
     filtered_rows = []
     for row in rows:
         created_date = row["created_at_dt"].date()
@@ -679,7 +708,7 @@ def admin_approvals_data(filter_key: str = "all", from_date: str = "", to_date: 
             continue
         if normalized_filter == "vendors" and row["request_type"] != "vendor":
             continue
-        if normalized_filter == "services":
+        if normalized_filter == "services" and row["request_type"] != "service":
             continue
 
         row["created_at"] = row["created_at_dt"].strftime("%d %b %Y, %I:%M %p")

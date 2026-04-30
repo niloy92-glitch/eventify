@@ -26,5 +26,6 @@ urlpatterns = [
     path("client/", RedirectView.as_view(url=reverse_lazy("users:dashboard", kwargs={"role": "client"}), permanent=False), name="client"),
     path("vendor/", RedirectView.as_view(url=reverse_lazy("users:dashboard", kwargs={"role": "vendor"}), permanent=False), name="vendor"),
     path("users/", include("users.urls")),
+    path("services/", include("services.urls")),
     path("admin/", admin.site.urls),
 ]

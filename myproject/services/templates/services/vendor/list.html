@@ -1,0 +1,51 @@
+{% extends 'users/vendor/base.html' %}
+{% load static %}
+
+{% block title %}My Services{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'services/css/services.css' %}" />
+{% endblock %}
+
+{% block vendor_content %}
+<section class="card page-head">
+  <div class="row-between">
+    <div>
+      <h1>Services</h1>
+      <p class="muted">Manage services your company offers.</p>
+    </div>
+    <div>
+      <a class="btn btn-primary" href="{% url 'services:vendor_service_create' %}">Add Service</a>
+    </div>
+  </div>
+</section>
+
+<section class="card">
+  <div class="service-grid">
+    {% for svc in services %}
+      <div class="service-card">
+        <div class="service-card-header">
+          <h3>
+            {% if svc.is_approved %}<span class="service-approved-tick">✓</span>{% endif %}
+            {{ svc.name }}
+          </h3>
+        </div>
+        <p class="muted">{{ svc.get_service_type_display }}</p>
+        <p class="muted">{% if svc.price %}BDT {{ svc.price }}{% else %}Contact{% endif %}</p>
+        <div class="service-actions">
+          <a class="btn" href="{% url 'services:vendor_service_edit' svc.pk %}">Edit</a>
+          <form method="post" action="{% url 'services:vendor_service_delete' svc.pk %}" style="display:inline">
+            {% csrf_token %}
+            <button class="btn danger-btn" type="submit">Delete</button>
+          </form>
+        </div>
+        {% if not svc.is_approved %}
+          <div class="service-pending">Pending admin approval</div>
+        {% endif %}
+      </div>
+    {% empty %}
+      <p>No services yet. Add one to get started.</p>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

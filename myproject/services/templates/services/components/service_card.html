@@ -1,0 +1,18 @@
+<div
+  class="service-card"
+  tabindex="0"
+  role="button"
+  data-service-id="{{ svc.pk }}"
+  data-service-name="{{ svc.name }}"
+  data-service-desc="{{ svc.description|escapejs }}"
+  data-service-company="{{ svc.vendor.company_name }}"
+  data-service-type="{{ svc.service_type }}"
+  data-service-approved="{{ svc.is_approved|lower }}"
+>
+  <h3>
+    {% if svc.is_approved %}<span class="service-approved-tick">✓</span>{% endif %}
+    {{ svc.name }}
+  </h3>
+  <p class="muted">{{ svc.vendor.company_name }}</p>
+  <p class="muted">{{ svc.get_service_type_display }}</p>
+</div>

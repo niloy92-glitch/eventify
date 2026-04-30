@@ -1,0 +1,32 @@
+{% extends 'users/client/base.html' %}
+{% load static %}
+
+{% block title %}Services Home{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'services/css/services.css' %}" />
+{% endblock %}
+
+{% block client_content %}
+<section class="card page-head">
+  <h1>Available Services</h1>
+  <p class="muted">Browse services offered by vendors.</p>
+</section>
+
+<section class="card">
+  <div class="service-grid">
+    {% for svc in services %}
+      {% include 'services/components/service_card.html' %}
+    {% empty %}
+      <p>No services available yet.</p>
+    {% endfor %}
+  </div>
+</section>
+
+{% include 'services/components/service_detail_modal.html' %}
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{% static 'services/js/services.js' %}"></script>
+{% endblock %}
