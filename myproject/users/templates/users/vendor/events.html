@@ -1,0 +1,50 @@
+{% extends 'users/vendor/base.html' %}
+
+{% block title %}My Events{% endblock %}
+
+{% block vendor_content %}
+<section class="card page-head">
+  <div class="row-between">
+    <div>
+      <h1>My Events</h1>
+      <p class="muted">A list of all events you are confirmed to provide services for.</p>
+    </div>
+    <a class="btn" href="{% url 'users:vendor_dashboard' %}">Back to Dashboard</a>
+  </div>
+</section>
+
+<section class="card">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Event</th>
+          <th>Service</th>
+          <th>Date</th>
+          <th>Location</th>
+          <th>Price</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for booking in approved_events %}
+          <tr class="approval-row">
+            <td>{{ booking.event_title }}</td>
+            <td>{{ booking.service_name }}</td>
+            <td>{{ booking.requested_date_label }}</td>
+            <td>{{ booking.event_location|default:"TBD" }}</td>
+            <td>BDT {{ booking.price }}</td>
+            <td class="actions-cell">
+              <a href="{% url 'chat:vendor_chat_list' %}" class="btn">Message Client</a>
+            </td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="6">No confirmed events found.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

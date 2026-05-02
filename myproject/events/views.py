@@ -6,11 +6,11 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
-from django.views.decorators.http import require_GET, require_POST, require_http_methods
+from django.views.decorators.http import require_GET, require_POST
 
 from .forms import EventForm, EventPaymentForm
 from .models import Event, EventServiceBooking
-from services.models import ApprovalRequest, Service, ServiceAvailabilitySlot
+from services.models import Service, ServiceAvailabilitySlot
 from users.services import (
 	AUTH_DEFAULT_ROLE,
 	AUTH_MESSAGE_KEYS,
@@ -239,8 +239,16 @@ def vendor_events_view(request: HttpRequest) -> HttpResponse:
 		return redirect_response
 
 	context = vendor_base_context(request, "events")
-	context.update({"page_name": "Events"})
-	return render(request, "users/vendor/placeholder.html", context)
+	
+	from users.services import _serialize_booking_request
+	queryset = EventServiceBooking.objects.select_related("event", "service", "service__vendor").filter(vendor=request.user, status='approved').order_by("-requested_date")
+	approved_events = [_serialize_booking_request(item) for item in queryset]
+	
+	context.update({
+		"page_name": "Events",
+		"approved_events": approved_events
+	})
+	return render(request, "users/vendor/events.html", context)
 
 
 @login_required(login_url="users:login")

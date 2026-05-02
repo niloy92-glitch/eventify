@@ -4,12 +4,12 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods, require_GET, require_POST
-from django.http import HttpRequest, HttpResponse, JsonResponse
+from django.http import HttpRequest, HttpResponse
 from django.utils import timezone
 
-from .models import ApprovalRequest, Service, ServiceAvailabilitySlot
+from services.models import ApprovalRequest, Service, ServiceAvailabilitySlot
 from events.models import Event, EventServiceBooking
-from .forms import ServiceForm
+from services.forms import ServiceForm
 from users.services import AUTH_MESSAGE_KEYS, add_auth_notice, client_base_context, vendor_base_context
 
 
@@ -187,6 +187,14 @@ def book_service_request(request: HttpRequest) -> HttpResponse:
 		booking.status = "pending"
 		booking.save(update_fields=["vendor", "requested_date", "price_snapshot", "status", "updated_at"])
 
+	from chat.models import Conversation, Message
+	conv, _ = Conversation.objects.get_or_create(client=event.client, vendor=service.vendor)
+	Message.objects.create(
+		conversation=conv,
+		is_system=True,
+		content=f"System: Client requested to book '{service.name}' for '{event.title}' on {event.event_date.strftime('%B %d, %Y')}."
+	)
+
 	msg = AUTH_MESSAGE_KEYS["booking_requested"]
 	return redirect(add_auth_notice(reverse("services:services_home"), msg))
 
@@ -206,4 +214,14 @@ def vendor_booking_request_update(request: HttpRequest) -> HttpResponse:
 	booking.status = "approved" if decision == "approve" else "rejected"
 	booking.responded_at = timezone.now()
 	booking.save(update_fields=["status", "responded_at", "updated_at"])
+
+	from chat.models import Conversation, Message
+	conv, _ = Conversation.objects.get_or_create(client=booking.event.client, vendor=booking.service.vendor)
+	status_text = "approved" if decision == "approve" else "rejected"
+	Message.objects.create(
+		conversation=conv,
+		is_system=True,
+		content=f"System: Vendor has {status_text} the booking request for '{booking.service.name}'."
+	)
+	
 	return redirect(add_auth_notice(reverse("users:vendor_dashboard"), AUTH_MESSAGE_KEYS["booking_updated"]))

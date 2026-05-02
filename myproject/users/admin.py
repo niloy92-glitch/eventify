@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 
-from .models import EventUser, RoleChoices
+from users.models import EventUser
 
 
 @admin.register(EventUser)

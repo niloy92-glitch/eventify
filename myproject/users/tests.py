@@ -271,7 +271,7 @@ class AuthFlowTests(TestCase):
 		)
 		self.client.force_login(user)
 
-		response = self.client.get(reverse("users:client_messages"))
+		response = self.client.get(reverse("chat:client_chat_list"))
 		self.assertEqual(response.status_code, 200)
 		self.assertContains(response, "Messages")
 

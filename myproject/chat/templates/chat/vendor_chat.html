@@ -1,0 +1,168 @@
+{% extends 'users/vendor/base.html' %}
+{% load static %}
+
+{% block title %}Messages | Vendor Dashboard{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'chat/css/chat.css' %}">
+{% endblock %}
+
+{% block vendor_content %}
+<div class="chat-container">
+    <div class="chat-sidebar">
+        <div class="chat-sidebar-header">
+            <h2>Chats</h2>
+        </div>
+        <div class="chat-list">
+            {% for conv in conversations %}
+                <a href="{% url 'chat:vendor_chat_detail' conv.id %}" class="chat-list-item {% if active_conversation and active_conversation.id == conv.id %}active{% endif %}">
+                    <div class="chat-avatar">{{ conv.client.first_name|slice:":1"|upper|default:conv.client.email|slice:":1"|upper }}</div>
+                    <div class="chat-info">
+                        <div class="chat-name">{{ conv.client.first_name }} {{ conv.client.last_name }}</div>
+                        <div class="chat-last-message">
+                            {% with last_msg=conv.messages.last %}
+                                {% if last_msg %}
+                                    {{ last_msg.content|truncatechars:30 }}
+                                {% else %}
+                                    <span class="muted">No messages yet</span>
+                                {% endif %}
+                            {% endwith %}
+                        </div>
+                    </div>
+                    <div class="chat-meta">
+                        {% with last_msg=conv.messages.last %}
+                            {% if last_msg %}
+                                <div class="chat-time">{{ last_msg.created_at|date:"M d" }}</div>
+                            {% endif %}
+                        {% endwith %}
+                        {% with unread_count=conv.unread_count_for|default:0 %}
+                        {% if unread_count > 0 %}
+                            <div class="unread-badge">{{ unread_count }}</div>
+                        {% endif %}
+                        {% endwith %}
+                    </div>
+                </a>
+            {% empty %}
+                <div class="empty-chats">No conversations yet.</div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="chat-main">
+        {% if active_conversation %}
+            <div class="chat-header">
+                <div class="chat-header-info">
+                    <div class="chat-avatar">{{ active_conversation.client.first_name|slice:":1"|upper|default:active_conversation.client.email|slice:":1"|upper }}</div>
+                    <div>
+                        <h2>{{ active_conversation.client.first_name }} {{ active_conversation.client.last_name }}</h2>
+                        {% if active_conversation.is_locked %}
+                            <span class="badge danger">Locked</span>
+                        {% else %}
+                            <span class="badge success">Active</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="chat-context">
+                    <button id="toggle-context-btn" class="btn btn-secondary btn-sm">Context</button>
+                </div>
+            </div>
+
+            <div class="chat-context-panel" id="chat-context-panel" style="display: none;">
+                <h4>Booking Context</h4>
+                <p><strong>Client Email:</strong> {{ active_conversation.client.email }}</p>
+                <p><strong>Client Phone:</strong> {{ active_conversation.client.phone|default:"N/A" }}</p>
+                <div class="context-bookings">
+                    {% for booking in active_bookings %}
+                        <div class="context-booking-card">
+                            <strong>Service:</strong> {{ booking.service.name }}<br>
+                            <strong>Event:</strong> {{ booking.event.title }}<br>
+                            <strong>Date:</strong> {{ booking.event.event_date }}<br>
+                            <strong>Address:</strong> {{ booking.event.venue_address|default:"N/A" }}
+                        </div>
+                    {% empty %}
+                        <p class="muted">No recent active bookings within 7 days.</p>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="chat-messages" id="chat-messages">
+                {% for message in chat_messages %}
+                    {% ifchanged message.created_at.date %}
+                        <div class="chat-date-divider">
+                            <span>{{ message.created_at|date:"F j, Y" }}</span>
+                        </div>
+                    {% endifchanged %}
+
+                    {% if message.is_system %}
+                        <div class="message message-system">
+                            <div class="message-content">
+                                {{ message.content }}
+                                <div class="message-time">{{ message.created_at|date:"h:i A" }}</div>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="message {% if message.sender == request.user %}message-sent{% else %}message-received{% endif %}">
+                            <div class="message-content">
+                                {{ message.content }}
+                                <div class="message-time">
+                                    {{ message.created_at|date:"h:i A" }}
+                                    {% if message.sender == request.user and message.is_read %}
+                                        <span class="read-receipt">✓✓</span>
+                                    {% elif message.sender == request.user %}
+                                        <span class="read-receipt">✓</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+                {% empty %}
+                    <div class="empty-messages">Say hello to the client!</div>
+                {% endfor %}
+            </div>
+
+            <div class="chat-input-area">
+                {% if active_conversation.is_locked %}
+                    <div class="chat-locked-message">
+                        This conversation is locked. You can only view previous messages because it has been more than 7 days since the last event with this client.
+                    </div>
+                {% else %}
+                    <form action="{% url 'chat:vendor_chat_detail' active_conversation.id %}" method="post" class="chat-form">
+                        {% csrf_token %}
+                        <input type="text" name="content" class="chat-input" placeholder="Type a message..." required autocomplete="off" autofocus>
+                        <button type="submit" class="btn btn-primary chat-send-btn">Send</button>
+                    </form>
+                {% endif %}
+            </div>
+        {% else %}
+            <div class="chat-empty-state">
+                <div class="empty-state-icon">💬</div>
+                <h3>Your Messages</h3>
+                <p>Select a conversation from the sidebar to view messages or start chatting.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const messagesDiv = document.getElementById("chat-messages");
+        if (messagesDiv) {
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        const contextBtn = document.getElementById("toggle-context-btn");
+        const contextPanel = document.getElementById("chat-context-panel");
+        if (contextBtn && contextPanel) {
+            contextBtn.addEventListener("click", function() {
+                if (contextPanel.style.display === "none") {
+                    contextPanel.style.display = "block";
+                } else {
+                    contextPanel.style.display = "none";
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

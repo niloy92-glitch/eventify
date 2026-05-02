@@ -3,7 +3,7 @@ from django.conf import settings
 from django.urls import path
 from django.urls import reverse_lazy
 
-from . import views
+from users import views
 
 app_name = "users"
 
@@ -46,12 +46,10 @@ urlpatterns = [
         name="password_reset_complete",
     ),
     path("client/dashboard/", views.client_dashboard_view, name="client_dashboard"),
-    path("client/messages/", views.client_messages_view, name="client_messages"),
     path("client/profile/", views.client_profile_view, name="client_profile"),
     path("client/profile/update/", views.client_profile_update_view, name="client_profile_update"),
     path("client/profile/delete/", views.client_delete_account_view, name="client_delete_account"),
     path("vendor/dashboard/", views.vendor_dashboard_view, name="vendor_dashboard"),
-    path("vendor/messages/", views.vendor_messages_view, name="vendor_messages"),
     path("vendor/profile/", views.vendor_profile_view, name="vendor_profile"),
     path("vendor/profile/update/", views.vendor_profile_update_view, name="vendor_profile_update"),
     path("vendor/profile/delete/", views.vendor_delete_account_view, name="vendor_delete_account"),
