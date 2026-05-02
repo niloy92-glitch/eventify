@@ -1,25 +1,31 @@
 document.addEventListener('DOMContentLoaded', function () {
   const iconMap = {
-    catering: "🍽",
-    photography: "📷",
-    decoration: "🎀",
-    music: "🎵",
-    other: "★",
+    catering: '🍽',
+    photography: '📷',
+    decoration: '🎀',
+    music: '🎵',
+    venue: '🏛',
+    other: '★',
   };
   const monthNames = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December',
   ];
+
+  function readJsonScript(id) {
+    const node = document.getElementById(id);
+    if (!node) return [];
+    try {
+      return JSON.parse(node.textContent || '[]');
+    } catch (error) {
+      return [];
+    }
+  }
+
+  const servicesData = readJsonScript('services-data');
+  const upcomingEvents = readJsonScript('client-events-data');
+  const serviceMap = new Map(servicesData.map(function (item) { return [String(item.id), item]; }));
+  const upcomingEventMap = new Map(upcomingEvents.map(function (item) { return [String(item.id), item]; }));
 
   const modal = document.getElementById('service-detail-modal');
   const icon = document.getElementById('service-detail-icon');
@@ -31,15 +37,40 @@ document.addEventListener('DOMContentLoaded', function () {
   const monthSelect = document.getElementById('service-calendar-month');
   const yearSelect = document.getElementById('service-calendar-year');
   const grid = document.getElementById('service-calendar-grid');
+  const eventSelect = document.getElementById('service-event-select');
+  const bookingForm = document.getElementById('service-booking-form');
+  const bookingSubmit = document.getElementById('service-booking-submit');
+  const bookingStatus = document.getElementById('service-booking-status');
+  const bookingServiceId = document.getElementById('service-booking-service-id');
+  const bookingEventId = document.getElementById('service-booking-event-id');
 
   const today = new Date();
-  const calendarState = {
-    year: today.getFullYear(),
-    month: today.getMonth(),
-  };
+  today.setHours(0, 0, 0, 0);
+  const calendarState = { year: today.getFullYear(), month: today.getMonth() };
+  const storageKey = 'eventify.serviceDetail.state';
 
-  function pad(value) {
-    return String(value).padStart(2, '0');
+  let selectedService = null;
+  let selectedEventId = '';
+  let availabilitySet = new Set();
+
+  function persistState() {
+    if (!selectedService) return;
+    localStorage.setItem(storageKey, JSON.stringify({
+      serviceId: String(selectedService.id),
+      eventId: String(selectedEventId || ''),
+      year: calendarState.year,
+      month: calendarState.month,
+    }));
+  }
+
+  function loadPersistedState(serviceId) {
+    try {
+      const payload = JSON.parse(localStorage.getItem(storageKey) || 'null');
+      if (!payload || String(payload.serviceId) !== String(serviceId)) return null;
+      return payload;
+    } catch (error) {
+      return null;
+    }
   }
 
   function buildMonthOptions() {
@@ -51,15 +82,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
   function buildYearOptions() {
     if (!yearSelect) return;
-    const startYear = today.getFullYear() - 5;
-    const endYear = today.getFullYear() + 8;
+    const startYear = today.getFullYear();
+    const endYear = today.getFullYear() + 2;
     let options = '';
-
     for (let year = startYear; year <= endYear; year += 1) {
       options += '<option value="' + year + '">' + year + '</option>';
     }
-
     yearSelect.innerHTML = options;
+  }
+
+  function currentMonthLabel() {
+    return monthNames[calendarState.month] + ' ' + calendarState.year;
   }
 
   function renderCalendar() {
@@ -68,34 +101,35 @@ document.addEventListener('DOMContentLoaded', function () {
     const firstDay = new Date(calendarState.year, calendarState.month, 1).getDay();
     const daysInMonth = new Date(calendarState.year, calendarState.month + 1, 0).getDate();
     const previousMonthDays = new Date(calendarState.year, calendarState.month, 0).getDate();
-    const currentMonthLabel = monthNames[calendarState.month] + ' ' + calendarState.year;
 
     if (calendarLabel) {
-      calendarLabel.textContent = currentMonthLabel;
+      calendarLabel.textContent = currentMonthLabel();
     }
-    if (monthSelect && String(monthSelect.value) !== String(calendarState.month)) {
-      monthSelect.value = String(calendarState.month);
-    }
-    if (yearSelect && String(yearSelect.value) !== String(calendarState.year)) {
-      yearSelect.value = String(calendarState.year);
-    }
+    if (monthSelect) monthSelect.value = String(calendarState.month);
+    if (yearSelect) yearSelect.value = String(calendarState.year);
 
     let cells = '';
-
     for (let index = 0; index < firstDay; index += 1) {
       const dayNumber = previousMonthDays - firstDay + index + 1;
       cells += '<button type="button" class="calendar-day calendar-day-outside" aria-disabled="true" tabindex="-1"><span>' + dayNumber + '</span></button>';
     }
 
     for (let day = 1; day <= daysInMonth; day += 1) {
-      const isToday = day === today.getDate() && calendarState.month === today.getMonth() && calendarState.year === today.getFullYear();
-      const isWeekend = new Date(calendarState.year, calendarState.month, day).getDay() === 0 || new Date(calendarState.year, calendarState.month, day).getDay() === 6;
+      const dateString = calendarState.year + '-' + String(calendarState.month + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+      const date = new Date(calendarState.year, calendarState.month, day);
+      const isToday = date.toDateString() === today.toDateString();
+      const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+      const isAvailable = availabilitySet.has(dateString);
       const classes = ['calendar-day'];
 
       if (isToday) classes.push('is-today');
       if (isWeekend) classes.push('is-weekend');
+      if (!isAvailable) classes.push('calendar-day-unavailable');
+      if (selectedEventId && upcomingEventMap.get(String(selectedEventId)) && upcomingEventMap.get(String(selectedEventId)).event_date === dateString) {
+        classes.push('is-selected');
+      }
 
-      cells += '<button type="button" class="' + classes.join(' ') + '" aria-label="' + currentMonthLabel + ' ' + day + '"><span class="calendar-day-number">' + day + '</span><span class="calendar-day-state">Available</span></button>';
+      cells += '<button type="button" class="' + classes.join(' ') + '" aria-label="' + currentMonthLabel() + ' ' + day + '"><span class="calendar-day-number">' + day + '</span><span class="calendar-day-state">' + (isAvailable ? 'Available' : 'Unavailable') + '</span></button>';
     }
 
     const remainingCells = 42 - (firstDay + daysInMonth);
@@ -106,34 +140,88 @@ document.addEventListener('DOMContentLoaded', function () {
     grid.innerHTML = cells;
   }
 
-  function setMonth(month) {
-    calendarState.month = month;
-    renderCalendar();
+  function updateBookingState() {
+    if (!selectedService || !bookingSubmit || !bookingStatus || !bookingEventId || !bookingServiceId) return;
+
+    bookingServiceId.value = String(selectedService.id);
+    bookingEventId.value = String(selectedEventId || '');
+
+    const event = upcomingEventMap.get(String(selectedEventId || '')) || null;
+    const canBookSlot = Boolean(event && availabilitySet.has(event.event_date));
+    const venueBlocked = Boolean(event && selectedService.service_type === 'venue' && event.has_own_venue);
+
+    bookingSubmit.disabled = !event || !canBookSlot || venueBlocked;
+
+    if (!event) {
+      bookingStatus.textContent = 'Choose an event date that matches an available slot to continue.';
+    } else if (venueBlocked) {
+      bookingStatus.textContent = 'This event already has its own venue, so venue services are blocked.';
+    } else if (!canBookSlot) {
+      bookingStatus.textContent = 'This event date does not match an available slot on the calendar.';
+    } else {
+      bookingStatus.textContent = 'This event matches an available slot and is ready to book.';
+    }
+
+    persistState();
   }
 
-  function setYear(year) {
-    calendarState.year = year;
-    renderCalendar();
+  function renderEventOptions() {
+    if (!eventSelect) return;
+    const options = ['<option value="">Select an event</option>'];
+
+    upcomingEvents.forEach(function (event) {
+      options.push(
+        '<option value="' + event.id + '">' +
+        event.title + ' - ' + event.event_date_label +
+        '</option>'
+      );
+    });
+
+    eventSelect.innerHTML = options.join('');
+    eventSelect.value = String(selectedEventId || '');
   }
 
-  function resetCalendarToToday() {
-    calendarState.year = today.getFullYear();
-    calendarState.month = today.getMonth();
+  function applyServiceData(service) {
+    selectedService = service;
+    availabilitySet = new Set((service.availability_dates || []).map(function (value) { return String(value); }));
+
+    if (titleEl) titleEl.textContent = service.name || '';
+    if (companyEl) companyEl.textContent = service.company_name || '';
+    if (typeEl) typeEl.textContent = (service.service_type || 'other').replace(/_/g, ' ');
+    if (descEl) descEl.textContent = service.description || '';
+    if (icon) icon.textContent = iconMap[service.service_type] || iconMap.other;
+    if (bookingServiceId) bookingServiceId.value = String(service.id);
+
+    renderEventOptions();
     renderCalendar();
-  }
-
-  function updateServiceModal(data) {
-    if (!modal) return;
-
-    const titleText = (data.approved === 'true' ? '✓ ' : '') + (data.title || '');
-    if (titleEl) titleEl.textContent = titleText;
-    if (companyEl) companyEl.textContent = data.company || '';
-    if (typeEl) typeEl.textContent = (data.type || 'other').replace(/_/g, ' ');
-    if (descEl) descEl.textContent = data.desc || '';
-    if (icon) icon.textContent = iconMap[data.type] || iconMap.other;
-
-    resetCalendarToToday();
+    updateBookingState();
     window.openModal(modal);
+  }
+
+  function openFromCard(card) {
+    const service = serviceMap.get(String(card.dataset.serviceId || ''));
+    if (!service) return;
+
+    const persisted = loadPersistedState(service.id);
+    selectedEventId = persisted && persisted.eventId ? persisted.eventId : '';
+    if (persisted) {
+      calendarState.year = Number.parseInt(persisted.year, 10) || today.getFullYear();
+      calendarState.month = Number.parseInt(persisted.month, 10) || today.getMonth();
+    } else {
+      calendarState.year = today.getFullYear();
+      calendarState.month = today.getMonth();
+    }
+
+    applyServiceData(service);
+    if (eventSelect) eventSelect.value = String(selectedEventId || '');
+  }
+
+  function moveMonth(delta) {
+    const next = new Date(calendarState.year, calendarState.month + delta, 1);
+    calendarState.year = next.getFullYear();
+    calendarState.month = next.getMonth();
+    renderCalendar();
+    persistState();
   }
 
   buildMonthOptions();
@@ -141,59 +229,84 @@ document.addEventListener('DOMContentLoaded', function () {
   renderCalendar();
 
   if (monthSelect) {
-    monthSelect.value = String(calendarState.month);
     monthSelect.addEventListener('change', function () {
-      setMonth(parseInt(monthSelect.value, 10));
+      calendarState.month = Number.parseInt(monthSelect.value, 10);
+      renderCalendar();
+      persistState();
     });
   }
 
   if (yearSelect) {
-    yearSelect.value = String(calendarState.year);
     yearSelect.addEventListener('change', function () {
-      setYear(parseInt(yearSelect.value, 10));
+      calendarState.year = Number.parseInt(yearSelect.value, 10);
+      renderCalendar();
+      persistState();
     });
   }
 
   document.querySelectorAll('[data-calendar-nav]').forEach(function (button) {
     button.addEventListener('click', function () {
       const action = button.getAttribute('data-calendar-nav');
-
       if (action === 'prev') {
-        const previous = new Date(calendarState.year, calendarState.month - 1, 1);
-        calendarState.year = previous.getFullYear();
-        calendarState.month = previous.getMonth();
+        moveMonth(-1);
       } else if (action === 'next') {
-        const next = new Date(calendarState.year, calendarState.month + 1, 1);
-        calendarState.year = next.getFullYear();
-        calendarState.month = next.getMonth();
+        moveMonth(1);
       } else {
-        resetCalendarToToday();
-        return;
+        calendarState.year = today.getFullYear();
+        calendarState.month = today.getMonth();
+        renderCalendar();
+        persistState();
       }
-
-      renderCalendar();
     });
   });
 
-  document.querySelectorAll('.service-card[data-service-id]').forEach(function (card) {
-    function openFromCard() {
-      updateServiceModal({
-        title: card.dataset.serviceName || '',
-        desc: card.dataset.serviceDesc || '',
-        company: card.dataset.serviceCompany || '',
-        type: card.dataset.serviceType || 'other',
-        approved: card.dataset.serviceApproved || 'false',
-      });
-    }
+  if (eventSelect) {
+    eventSelect.addEventListener('change', function () {
+      selectedEventId = eventSelect.value;
+      renderCalendar();
+      updateBookingState();
+    });
+  }
 
-    card.addEventListener('click', openFromCard);
+  if (bookingForm) {
+    bookingForm.addEventListener('submit', function (event) {
+      if (!selectedService || !selectedEventId || bookingSubmit.disabled) {
+        event.preventDefault();
+      }
+    });
+  }
+
+  document.querySelectorAll('.service-card[data-service-id]').forEach(function (card) {
+    function openCard() {
+      openFromCard(card);
+    }
+    card.addEventListener('click', openCard);
     card.addEventListener('keydown', function (event) {
       if (event.key === 'Enter' || event.key === ' ') {
         event.preventDefault();
-        openFromCard();
+        openCard();
       }
     });
   });
+
+  document.querySelectorAll('[data-close-modal]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      const modalId = button.getAttribute('data-close-modal');
+      window.closeModal(document.getElementById(modalId));
+    });
+  });
+
+  document.querySelectorAll('.modal').forEach(function (overlay) {
+    overlay.addEventListener('click', function (event) {
+      if (event.target === overlay) {
+        window.closeModal(overlay);
+      }
+    });
+  });
+
+  if (window.location.hash === '#service-detail-modal' && servicesData.length) {
+    openFromCard(document.querySelector('.service-card[data-service-id]'));
+  }
 });
 
 

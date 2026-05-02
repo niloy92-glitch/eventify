@@ -1,0 +1,61 @@
+{% extends 'users/vendor/base.html' %}
+
+{% block title %}Booking Requests{% endblock %}
+
+{% block vendor_content %}
+<section class="card page-head">
+  <div class="row-between">
+    <div>
+      <h1>Booking Requests</h1>
+      <p class="muted">Review every service booking request in one place.</p>
+    </div>
+    <a class="btn" href="{% url 'users:vendor_dashboard' %}">Back to Dashboard</a>
+  </div>
+</section>
+
+<section class="card">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Event</th>
+          <th>Service</th>
+          <th>Date</th>
+          <th>Price</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for request_item in booking_requests %}
+          <tr class="approval-row approval-row-{{ request_item.status }}{% if request_item.status != 'pending' %} approval-row-readonly{% endif %}">
+            <td>{{ request_item.event_title }}</td>
+            <td>{{ request_item.service_name }}</td>
+            <td>{{ request_item.event_date_label }}</td>
+            <td>BDT {{ request_item.price }}</td>
+            <td><span class="badge {{ request_item.status_badge }}">{{ request_item.status_label }}</span></td>
+            <td class="actions-cell">
+              <form method="post" action="{% url 'services:vendor_booking_request_update' %}">
+                {% csrf_token %}
+                <input type="hidden" name="request_id" value="{{ request_item.id }}" />
+                <input type="hidden" name="decision" value="approve" />
+                <button type="submit" class="btn" {% if not request_item.can_decide %}disabled aria-disabled="true"{% endif %}>Accept</button>
+              </form>
+              <form method="post" action="{% url 'services:vendor_booking_request_update' %}">
+                {% csrf_token %}
+                <input type="hidden" name="request_id" value="{{ request_item.id }}" />
+                <input type="hidden" name="decision" value="reject" />
+                <button type="submit" class="btn danger-btn" {% if not request_item.can_decide %}disabled aria-disabled="true"{% endif %}>Reject</button>
+              </form>
+            </td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="6">No booking requests found.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

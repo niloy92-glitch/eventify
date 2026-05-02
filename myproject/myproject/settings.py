@@ -36,7 +36,9 @@ def env_first(names: list[str], default: str = "") -> str:
 
 SECRET_KEY = env_str("DJANGO_SECRET_KEY", "django-insecure-dev-key")
 DEBUG = env_bool("DEBUG", True)
-ALLOWED_HOSTS = [host.strip() for host in env_str("ALLOWED_HOSTS", "*").split(",") if host.strip()]
+ALLOWED_HOSTS = [
+    host.strip() for host in env_str("ALLOWED_HOSTS", "*").split(",") if host.strip()
+]
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -47,6 +49,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "users",
     "services",
+    "events",
 ]
 
 MIDDLEWARE = [
@@ -94,7 +97,12 @@ if DATABASE_URL:
         )
     }
 elif USE_SQLITE:
-    DATABASES = {"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": BASE_DIR / "db.sqlite3"}}
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 else:
     DATABASES = {
         "default": {
@@ -110,7 +118,9 @@ else:
     }
 
 AUTH_PASSWORD_VALIDATORS = [
-    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"
+    },
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},

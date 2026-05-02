@@ -8,6 +8,7 @@ class Service(models.Model):
         ("photography", "Photography"),
         ("decoration", "Decoration"),
         ("music", "Music"),
+        ("venue", "Venue"),
         ("other", "Other"),
     ]
 
@@ -24,6 +25,21 @@ class Service(models.Model):
 
     def __str__(self) -> str:
         return f"{self.name} ({self.vendor})"
+
+
+class ServiceAvailabilitySlot(models.Model):
+    service = models.ForeignKey(Service, on_delete=models.CASCADE, related_name="availability_slots")
+    available_date = models.DateField()
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["available_date"]
+        constraints = [
+            models.UniqueConstraint(fields=["service", "available_date"], name="unique_service_availability_slot"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.service} @ {self.available_date}"
 
 
 class ApprovalRequest(models.Model):

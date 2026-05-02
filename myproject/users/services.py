@@ -6,6 +6,7 @@ Google OAuth plumbing, email dispatch, and role helpers.
 """
 
 import logging
+from decimal import Decimal
 from datetime import timedelta
 from urllib.parse import urlencode
 from urllib.parse import parse_qsl
@@ -76,6 +77,17 @@ AUTH_MESSAGE_KEYS = {
     "user_delete_failed": "USER_DELETE_FAILED",
     "approval_updated": "APPROVAL_UPDATED",
     "approval_update_failed": "APPROVAL_UPDATE_FAILED",
+    "event_created": "EVENT_CREATED",
+    "event_updated": "EVENT_UPDATED",
+    "event_create_failed": "EVENT_CREATE_FAILED",
+    "event_update_failed": "EVENT_UPDATE_FAILED",
+    "event_deleted": "EVENT_DELETED",
+    "event_delete_failed": "EVENT_DELETE_FAILED",
+    "payment_updated": "PAYMENT_UPDATED",
+    "payment_update_failed": "PAYMENT_UPDATE_FAILED",
+    "booking_requested": "BOOKING_REQUESTED",
+    "booking_updated": "BOOKING_UPDATED",
+    "booking_update_failed": "BOOKING_UPDATE_FAILED",
 }
 
 AUTH_MESSAGES = {
@@ -90,6 +102,17 @@ AUTH_MESSAGES = {
     "USER_DELETE_FAILED": ("error", "User delete failed."),
     "APPROVAL_UPDATED": ("success", "Approval status updated successfully."),
     "APPROVAL_UPDATE_FAILED": ("error", "Approval update failed."),
+    "EVENT_CREATED": ("success", "Event created successfully."),
+    "EVENT_UPDATED": ("success", "Event updated successfully."),
+    "EVENT_CREATE_FAILED": ("error", "Event creation failed."),
+    "EVENT_UPDATE_FAILED": ("error", "Event update failed."),
+    "EVENT_DELETED": ("success", "Event deleted successfully."),
+    "EVENT_DELETE_FAILED": ("error", "Event delete failed."),
+    "PAYMENT_UPDATED": ("success", "Payment method saved successfully."),
+    "PAYMENT_UPDATE_FAILED": ("error", "Payment method could not be saved."),
+    "BOOKING_REQUESTED": ("success", "Service booking request sent."),
+    "BOOKING_UPDATED": ("success", "Booking request updated successfully."),
+    "BOOKING_UPDATE_FAILED": ("error", "Booking request update failed."),
 }
 
 
@@ -180,6 +203,27 @@ def dashboard_context(request: HttpRequest, role: str) -> dict:
 
 def _display_name(user) -> str:
     return user.get_full_name().strip() or user.email
+
+
+def _serialize_booking_request(request_item) -> dict:
+    event = request_item.event
+    service = request_item.service
+    status = str(request_item.status or "pending")
+    return {
+        "id": request_item.pk,
+        "event_id": event.pk,
+        "event_title": event.title,
+        "event_date_label": event.event_date.strftime("%A, %B %d, %Y"),
+        "event_has_own_venue": bool(event.has_own_venue),
+        "service_name": service.name,
+        "vendor_name": service.vendor.company_name or _display_name(service.vendor),
+        "price": f"{Decimal(str(request_item.price_snapshot or service.price or 0)):.2f}",
+        "status": status,
+        "status_label": status.title(),
+        "status_badge": "pending" if status == "pending" else "confirmed" if status == "approved" else "rejected",
+        "can_decide": status == "pending",
+        "requested_date_label": request_item.requested_date.strftime("%A, %B %d, %Y"),
+    }
 
 
 def _vendor_event_model():
@@ -274,47 +318,6 @@ def _dummy_vendor_event(today) -> dict:
     }
 
 
-def vendor_base_context(request: HttpRequest, active_menu: str) -> dict:
-    user_name = _display_name(request.user)
-    initials = "".join(part[0] for part in user_name.split() if part).upper()[:2] or "VN"
-
-    nav_links = [
-        {
-            "label": "Dashboard",
-            "href": reverse("users:vendor_dashboard"),
-            "active": active_menu == "dashboard",
-        },
-        {
-            "label": "Services",
-            "href": reverse("users:vendor_services"),
-            "active": active_menu == "services",
-        },
-        {
-            "label": "Events",
-            "href": reverse("users:vendor_events"),
-            "active": active_menu == "events",
-        },
-        {
-            "label": "Messages",
-            "href": reverse("users:vendor_messages"),
-            "active": active_menu == "messages",
-        },
-    ]
-
-    return {
-        "role": "vendor",
-        "user_name": user_name,
-        "initials": initials,
-        "vendor_nav_links": nav_links,
-        "vendor_profile_url": reverse("users:vendor_profile"),
-        "notification_items": [
-            "Two event inquiries are waiting for your response.",
-            "A client booked a date inside the next 7 days.",
-            "Your service catalog is ready for review.",
-        ],
-    }
-
-
 def vendor_dashboard_data(request: HttpRequest) -> dict:
     today = timezone.localdate()
     window_end = today + timedelta(days=7)
@@ -373,6 +376,14 @@ def vendor_dashboard_data(request: HttpRequest) -> dict:
     if not upcoming_events:
         upcoming_events = [_dummy_vendor_event(today)]
 
+    from events.views import _booking_request_model
+
+    booking_requests = []
+    booking_model = _booking_request_model()
+    if booking_model is not None:
+        queryset = booking_model.objects.select_related("event", "service", "service__vendor").filter(service__vendor=request.user)
+        booking_requests = [_serialize_booking_request(item) for item in queryset[:12]]
+
     upcoming_count = len(upcoming_events)
     return {
         "today_label": today.strftime("%A, %B %d, %Y"),
@@ -383,6 +394,53 @@ def vendor_dashboard_data(request: HttpRequest) -> dict:
             "bookings": max(1, upcoming_count - 1 if upcoming_count > 1 else 1),
         },
         "upcoming_events": upcoming_events,
+        "booking_requests": booking_requests,
+    }
+
+
+def vendor_base_context(request: HttpRequest, active_menu: str) -> dict:
+    user_name = _display_name(request.user)
+    initials = "".join(part[0] for part in user_name.split() if part).upper()[:2] or "VN"
+
+    nav_links = [
+        {
+            "label": "Dashboard",
+            "href": reverse("users:vendor_dashboard"),
+            "active": active_menu == "dashboard",
+        },
+        {
+            "label": "Services",
+            "href": reverse("users:vendor_services"),
+            "active": active_menu == "services",
+        },
+        {
+            "label": "Events",
+            "href": reverse("users:vendor_events"),
+            "active": active_menu == "events",
+        },
+        {
+            "label": "Booking Requests",
+            "href": reverse("users:vendor_booking_requests"),
+            "active": active_menu == "booking_requests",
+        },
+        {
+            "label": "Messages",
+            "href": reverse("users:vendor_messages"),
+            "active": active_menu == "messages",
+        },
+    ]
+
+    return {
+        "role": "vendor",
+        "user_name": user_name,
+        "initials": initials,
+        "vendor_nav_links": nav_links,
+        "vendor_profile_url": reverse("users:vendor_profile"),
+        "notification_items": [
+            "Two event inquiries are waiting for your response.",
+            "A client booked a date inside the next 7 days.",
+            "Your service catalog is ready for review.",
+        ],
     }
 
 
@@ -527,34 +585,56 @@ def client_base_context(request: HttpRequest, active_menu: str) -> dict:
 
 def client_dashboard_data(request: HttpRequest) -> dict:
     today = timezone.localdate()
-    seed = int(getattr(request.user, "pk", 1) or 1)
-
-    total_events = max(5, (seed % 7) + 6)
-    ongoing_events = 1
-    upcoming_events = max(2, total_events // 2)
-    canceled_events = max(1, total_events // 6)
-    completed_events = max(1, total_events - upcoming_events - ongoing_events - canceled_events)
-    total_events = upcoming_events + ongoing_events + canceled_events + completed_events
-
     upcoming_list = []
-    event_names = [
-        "Annual Family Meetup",
-        "Office Celebration",
-        "Cultural Night",
-        "Birthday Gathering",
-        "Wedding Reception",
-    ]
-    locations = ["Dhaka Club", "Banani Hall", "Gulshan Venue", "Dhanmondi Center", "Bashundhara Hall"]
+    total_events = upcoming_events = ongoing_events = canceled_events = completed_events = 0
 
-    for index in range(min(5, upcoming_events)):
-        event_date = today + timedelta(days=index + 1)
-        upcoming_list.append(
-            {
-                "name": event_names[index % len(event_names)],
-                "date": event_date.strftime("%A, %B %d %Y"),
-                "location": locations[index % len(locations)],
-            }
-        )
+    from events.views import _client_event_model
+
+    event_model = _client_event_model()
+    if event_model is not None:
+        queryset = event_model.objects.filter(client=request.user)
+        total_events = queryset.count()
+        ongoing_events = queryset.filter(event_date=today).count()
+        upcoming_queryset = queryset.filter(event_date__gte=today).order_by("event_date", "created_at")
+        upcoming_events = upcoming_queryset.count()
+        completed_events = queryset.filter(event_date__lt=today).count()
+
+        for event in upcoming_queryset[:5]:
+            upcoming_list.append(
+                {
+                    "name": event.title,
+                    "date": event.event_date.strftime("%A, %B %d %Y"),
+                    "location": event.venue_name or "Venue not set",
+                }
+            )
+
+    if not total_events:
+        seed = int(getattr(request.user, "pk", 1) or 1)
+        total_events = max(5, (seed % 7) + 6)
+        ongoing_events = 1
+        upcoming_events = max(2, total_events // 2)
+        canceled_events = max(1, total_events // 6)
+        completed_events = max(1, total_events - upcoming_events - ongoing_events - canceled_events)
+        total_events = upcoming_events + ongoing_events + canceled_events + completed_events
+
+        event_names = [
+            "Annual Family Meetup",
+            "Office Celebration",
+            "Cultural Night",
+            "Birthday Gathering",
+            "Wedding Reception",
+        ]
+        locations = ["Dhaka Club", "Banani Hall", "Gulshan Venue", "Dhanmondi Center", "Bashundhara Hall"]
+
+        for index in range(min(5, upcoming_events)):
+            event_date = today + timedelta(days=index + 1)
+            upcoming_list.append(
+                {
+                    "name": event_names[index % len(event_names)],
+                    "date": event_date.strftime("%A, %B %d %Y"),
+                    "location": locations[index % len(locations)],
+                }
+            )
 
     return {
         "today_label": today.strftime("%A, %B %d %Y"),

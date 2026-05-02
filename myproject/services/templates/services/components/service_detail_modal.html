@@ -19,6 +19,22 @@
       </section>
 
       <section class="service-calendar-panel" aria-label="Booking calendar">
+        <div class="service-booking-panel">
+          <label class="booking-field" for="service-event-select">
+            <span>Book for one of your upcoming events</span>
+            <select id="service-event-select">
+              <option value="">Select an event</option>
+            </select>
+          </label>
+          <form id="service-booking-form" method="post" action="{% url 'services:book_service_request' %}">
+            {% csrf_token %}
+            <input type="hidden" name="service_id" id="service-booking-service-id" />
+            <input type="hidden" name="event_id" id="service-booking-event-id" />
+            <button type="submit" class="btn btn-primary" id="service-booking-submit" disabled>Book Service</button>
+          </form>
+          <p class="status-text" id="service-booking-status">Choose an event date that matches an available slot to continue.</p>
+        </div>
+
         <div class="service-calendar-header-row">
           <h3 id="service-calendar-label" class="service-calendar-title">Availability</h3>
           
