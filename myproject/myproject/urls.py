@@ -28,5 +28,6 @@ urlpatterns = [
     path("users/", include("users.urls")),
     path("services/", include("services.urls")),
     path("events/", include("events.urls")),
+    path("chat/", include("chat.urls")),
     path("admin/", admin.site.urls),
 ]

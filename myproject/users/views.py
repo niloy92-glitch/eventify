@@ -12,9 +12,9 @@ from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
 from django.views.decorators.http import require_GET, require_POST
 
-from .forms import AdminUserForm, LoginForm, RegisterForm
-from .models import ApprovalStatusChoices
-from .services import (
+from users.forms import AdminUserForm, LoginForm, RegisterForm
+from users.models import ApprovalStatusChoices
+from users.services import (
     AUTH_DEFAULT_ROLE,
     AUTH_MESSAGE_KEYS,
     DJANGO_ADMIN_URL,
@@ -454,17 +454,6 @@ def vendor_dashboard_view(request: HttpRequest) -> HttpResponse:
     return render(request, "users/vendor/dashboard.html", context)
 
 
-@login_required(login_url="users:login")
-@require_GET
-def vendor_messages_view(request: HttpRequest) -> HttpResponse:
-    redirect_response = _vendor_access_redirect(request)
-    if redirect_response is not None:
-        return redirect_response
-
-    context = vendor_base_context(request, "messages")
-    context.update({"page_name": "Messages"})
-    return render(request, "users/vendor/placeholder.html", context)
-
 
 @login_required(login_url="users:login")
 @require_GET
@@ -524,18 +513,6 @@ def vendor_delete_account_view(request: HttpRequest) -> HttpResponse:
     return redirect(add_auth_notice(f"{reverse('users:login')}?role=vendor", AUTH_MESSAGE_KEYS["user_deleted"]))
 
 
-
-
-@login_required(login_url="users:login")
-@require_GET
-def client_messages_view(request: HttpRequest) -> HttpResponse:
-    redirect_response = _client_access_redirect(request)
-    if redirect_response is not None:
-        return redirect_response
-
-    context = client_base_context(request, "messages")
-    context.update({"page_name": "Messages"})
-    return render(request, "users/client/placeholder.html", context)
 @login_required(login_url="users:login")
 @require_GET
 def client_profile_view(request: HttpRequest) -> HttpResponse:

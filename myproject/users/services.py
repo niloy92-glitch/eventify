@@ -223,6 +223,7 @@ def _serialize_booking_request(request_item) -> dict:
         "status_badge": "pending" if status == "pending" else "confirmed" if status == "approved" else "rejected",
         "can_decide": status == "pending",
         "requested_date_label": request_item.requested_date.strftime("%A, %B %d, %Y"),
+        "event_location": event.venue_name or "Venue not set",
     }
 
 
@@ -305,17 +306,6 @@ def _serialize_vendor_event(event, date_field_name: str, date_field) -> dict:
     }
 
 
-def _dummy_vendor_event(today) -> dict:
-    event_date = today + timedelta(days=4)
-    return {
-        "title": "Summer Showcase Setup",
-        "date_label": event_date.strftime("%A, %B %d, %Y"),
-        "time_label": "5:30 PM",
-        "timing_label": "In 4 days",
-        "location": "Grand Avenue Convention Hall",
-        "status_label": "Upcoming",
-        "status_badge": "info-tag",
-    }
 
 
 def vendor_dashboard_data(request: HttpRequest) -> dict:
@@ -373,8 +363,6 @@ def vendor_dashboard_data(request: HttpRequest) -> dict:
                     for event in queryset[:6]
                 ]
 
-    if not upcoming_events:
-        upcoming_events = [_dummy_vendor_event(today)]
 
     from events.views import _booking_request_model
 
@@ -402,6 +390,17 @@ def vendor_base_context(request: HttpRequest, active_menu: str) -> dict:
     user_name = _display_name(request.user)
     initials = "".join(part[0] for part in user_name.split() if part).upper()[:2] or "VN"
 
+    unread_messages_count = 0
+    try:
+        from chat.models import Message
+        unread_messages_count = Message.objects.filter(
+            conversation__vendor=request.user, is_read=False
+        ).exclude(sender=request.user).count()
+    except Exception:
+        pass
+
+    messages_label = f"Messages ({unread_messages_count})" if unread_messages_count > 0 else "Messages"
+
     nav_links = [
         {
             "label": "Dashboard",
@@ -424,8 +423,8 @@ def vendor_base_context(request: HttpRequest, active_menu: str) -> dict:
             "active": active_menu == "booking_requests",
         },
         {
-            "label": "Messages",
-            "href": reverse("users:vendor_messages"),
+            "label": messages_label,
+            "href": reverse("chat:vendor_chat_list"),
             "active": active_menu == "messages",
         },
     ]
@@ -436,11 +435,7 @@ def vendor_base_context(request: HttpRequest, active_menu: str) -> dict:
         "initials": initials,
         "vendor_nav_links": nav_links,
         "vendor_profile_url": reverse("users:vendor_profile"),
-        "notification_items": [
-            "Two event inquiries are waiting for your response.",
-            "A client booked a date inside the next 7 days.",
-            "Your service catalog is ready for review.",
-        ],
+        "notification_items": [],
     }
 
 
@@ -519,11 +514,7 @@ def admin_base_context(request: HttpRequest, active_menu: str) -> dict:
         "initials": initials,
         "admin_nav_links": nav_links,
         "admin_profile_url": reverse("users:admin_profile"),
-        "notification_items": [
-            "Two new vendor approvals are pending.",
-            "A new admin account was added.",
-            "Daily dashboard snapshot is ready.",
-        ],
+        "notification_items": [],
     }
 
 
@@ -540,6 +531,17 @@ def _special_day_label(today) -> str:
 def client_base_context(request: HttpRequest, active_menu: str) -> dict:
     user_name = _display_name(request.user)
     initials = "".join(part[0] for part in user_name.split() if part).upper()[:2] or "CL"
+
+    unread_messages_count = 0
+    try:
+        from chat.models import Message
+        unread_messages_count = Message.objects.filter(
+            conversation__client=request.user, is_read=False
+        ).exclude(sender=request.user).count()
+    except Exception:
+        pass
+
+    messages_label = f"Messages ({unread_messages_count})" if unread_messages_count > 0 else "Messages"
 
     nav_links = [
         {
@@ -558,8 +560,8 @@ def client_base_context(request: HttpRequest, active_menu: str) -> dict:
             "active": active_menu == "my_events",
         },
         {
-            "label": "Messages",
-            "href": reverse("users:client_messages"),
+            "label": messages_label,
+            "href": reverse("chat:client_chat_list"),
             "active": active_menu == "messages",
         },
         {
@@ -575,11 +577,7 @@ def client_base_context(request: HttpRequest, active_menu: str) -> dict:
         "initials": initials,
         "client_nav_links": nav_links,
         "client_profile_url": reverse("users:client_profile"),
-        "notification_items": [
-            "A vendor sent you a quote update.",
-            "One of your events starts this week.",
-            "Reminder: confirm event checklist items.",
-        ],
+        "notification_items": [],
     }
 
 
@@ -608,33 +606,6 @@ def client_dashboard_data(request: HttpRequest) -> dict:
                 }
             )
 
-    if not total_events:
-        seed = int(getattr(request.user, "pk", 1) or 1)
-        total_events = max(5, (seed % 7) + 6)
-        ongoing_events = 1
-        upcoming_events = max(2, total_events // 2)
-        canceled_events = max(1, total_events // 6)
-        completed_events = max(1, total_events - upcoming_events - ongoing_events - canceled_events)
-        total_events = upcoming_events + ongoing_events + canceled_events + completed_events
-
-        event_names = [
-            "Annual Family Meetup",
-            "Office Celebration",
-            "Cultural Night",
-            "Birthday Gathering",
-            "Wedding Reception",
-        ]
-        locations = ["Dhaka Club", "Banani Hall", "Gulshan Venue", "Dhanmondi Center", "Bashundhara Hall"]
-
-        for index in range(min(5, upcoming_events)):
-            event_date = today + timedelta(days=index + 1)
-            upcoming_list.append(
-                {
-                    "name": event_names[index % len(event_names)],
-                    "date": event_date.strftime("%A, %B %d %Y"),
-                    "location": locations[index % len(locations)],
-                }
-            )
 
     return {
         "today_label": today.strftime("%A, %B %d %Y"),
@@ -685,20 +656,22 @@ def admin_users_data() -> dict:
         "vendors": role_counts.get("vendor", 0),
         "admins": role_counts.get("admin", 0),
     }
-
-
 def admin_dashboard_data() -> dict:
     user_data = admin_users_data()
     total_users = user_data["total"]
     vendors = user_data["vendors"]
     admins = user_data["admins"]
 
-    # Event/service stats are dummy-backed while those models are not yet present.
-    services = max((vendors * 3) + (admins * 2), 12)
-    events_running = max(total_users // 4, 2)
-    events_upcoming = max(total_users // 3, 3)
-    events_canceled = max(total_users // 10, 1)
-    events_completed = max(total_users // 2, 5)
+    from django.apps import apps
+    Service = apps.get_model("services", "Service")
+    Event = apps.get_model("events", "Event")
+    today = timezone.localdate()
+
+    services_count = Service.objects.count()
+    events_running = Event.objects.filter(event_date=today).count()
+    events_upcoming = Event.objects.filter(event_date__gt=today).count()
+    events_canceled = 0  # No status field on Event yet
+    events_completed = Event.objects.filter(event_date__lt=today).count()
 
     recent_activities = [
         {
@@ -714,7 +687,7 @@ def admin_dashboard_data() -> dict:
             "total_users": total_users,
             "vendors": vendors,
             "admins": admins,
-            "services": services,
+            "services": services_count,
             "events_running": events_running,
             "events_upcoming": events_upcoming,
             "events_canceled": events_canceled,
