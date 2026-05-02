@@ -1,0 +1,69 @@
+{% extends 'users/client/base.html' %}
+{% load static %}
+
+{% block title %}My Events{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'services/css/services.css' %}" />
+<link rel="stylesheet" href="{% static 'users/css/events.css' %}" />
+{% endblock %}
+
+{% block client_content %}
+<section class="card page-head">
+  <div class="row-between">
+    <div>
+      <h1>My Events</h1>
+      <p class="muted">Browse your events as cards. Click one to open its full details page.</p>
+    </div>
+    <div>
+      <button type="button" class="btn btn-primary" data-open-create-event>Create Event</button>
+    </div>
+  </div>
+</section>
+
+{{ event_payload|json_script:"client-events-data" }}
+
+<section class="card event-shell" id="client-events-shell">
+  <div class="event-list-panel" id="client-events-list-panel">
+    <div class="event-grid" id="client-events-list">
+      {% for event in events %}
+        <a class="event-card" href="{% url 'users:client_event_detail' event.id %}">
+          <div class="event-card-top">
+            <div>
+              <p class="event-card-kicker">{{ event.event_date_label }}</p>
+              <h3>{{ event.title }}</h3>
+            </div>
+            <span class="badge {% if event.payment_method %}confirmed{% else %}pending{% endif %}">{% if event.payment_method %}{{ event.payment_method_label }}{% else %}Payment pending{% endif %}</span>
+          </div>
+          <div class="event-card-meta">
+            <div class="event-card-meta-row">
+              <span class="event-card-label">Venue</span>
+              <strong>{{ event.venue_name }}</strong>
+            </div>
+            <div class="event-card-meta-row">
+              <span class="event-card-label">Services</span>
+              <strong>{{ event.service_count }}</strong>
+            </div>
+            <div class="event-card-meta-row">
+              <span class="event-card-label">Budget</span>
+              <strong>BDT {{ event.total_cost }}</strong>
+            </div>
+          </div>
+        </a>
+      {% empty %}
+        <div class="empty-state-card card">
+          <h3>No events yet</h3>
+          <p class="muted">Create your first event to start booking services.</p>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+{% include 'users/components/client_event_modal.html' %}
+{% include 'users/components/event_delete_modal.html' %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{% static 'users/js/client_events.js' %}"></script>
+{% endblock %}

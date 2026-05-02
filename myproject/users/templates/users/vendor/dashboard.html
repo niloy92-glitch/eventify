@@ -81,4 +81,14 @@
     {% endfor %}
   </div>
 </section>
+
+<section class="card">
+  <div class="row-between section-head" style="margin-bottom: 1rem;">
+    <div>
+      <h2>Booking Requests</h2>
+      <p class="muted">All service booking requests live on the dedicated page now.</p>
+    </div>
+    <a class="btn btn-primary" href="{% url 'users:vendor_booking_requests' %}">Open Booking Requests</a>
+  </div>
+</section>
 {% endblock %}

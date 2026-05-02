@@ -57,7 +57,7 @@
 .form-field textarea {
 	min-height: 120px;
 	width: 100%;
-	resize: vertical;
+	resize: none;
 	max-width: 100%;
 }
 
@@ -221,11 +221,154 @@
 	border-color: rgba(20, 18, 16, 0.2);
 }
 
+.event-edit-modal-card {
+	width: min(680px, 100%);
+	max-height: 90vh;
+	overflow: auto;
+	padding: 28px;
+	gap: 20px;
+	display: grid;
+}
+
+.event-edit-modal-header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 16px;
+}
+
+.event-edit-modal-heading {
+	max-width: 78%;
+	min-width: 0;
+}
+
+.event-edit-intro {
+	margin: 0;
+	font-size: 14px;
+	line-height: 1.5;
+}
+
+.event-edit-form {
+	display: grid;
+	gap: 14px;
+}
+
+.event-edit-checkbox-row {
+	display: flex;
+	align-items: flex-start;
+	gap: 12px;
+	padding: 14px 16px;
+	border: 1px solid var(--line-2);
+	border-radius: var(--radius);
+	background: var(--surface);
+	cursor: pointer;
+	box-shadow: var(--shadow-sm);
+}
+
+.event-edit-checkbox-row span {
+	display: grid;
+	gap: 3px;
+	color: var(--text-2);
+	font-size: 13px;
+	line-height: 1.45;
+}
+
+.event-edit-checkbox-row input[type="checkbox"] {
+	margin-top: 3px;
+	flex: 0 0 auto;
+}
+
+.event-edit-checkbox-row strong {
+	color: var(--text);
+	font-size: 14px;
+}
+
+.event-edit-checkbox-row small {
+	font-size: 13px;
+	font-weight: 500;
+}
+
+.event-edit-notes-field textarea {
+	min-height: 138px;
+}
+
+.event-edit-errors {
+	margin-top: -4px;
+}
+
+.event-edit-actions {
+	justify-content: flex-end;
+	margin-top: 2px;
+}
+
+.event-edit-actions .btn {
+	min-width: 120px;
+}
+
+.event-edit-errors {
+	margin-top: -4px;
+}
+
+@media (max-width: 720px) {
+	.event-edit-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.event-edit-panels,
+	.event-edit-secondary-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.event-edit-modal-card {
+		padding: 20px;
+	}
+
+	.event-edit-checkbox-row {
+		padding: 12px;
+	}
+
+	.event-edit-actions {
+		flex-direction: column-reverse;
+	}
+
+	.event-edit-actions .btn {
+		width: 100%;
+		justify-content: center;
+	}
+}
+
 .service-detail-layout {
 	display: grid;
 	gap: 12px;
 	overflow-y: auto;
 	flex: 1;
+}
+
+.service-booking-panel {
+	display: grid;
+	gap: 10px;
+	background: var(--surface-2);
+	border: 1px solid var(--line);
+	border-radius: 14px;
+	padding: 14px;
+}
+
+.booking-field {
+	display: grid;
+	gap: 6px;
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--text-2);
+}
+
+.booking-field select {
+	width: 100%;
+	padding: 10px 12px;
+	border: 1px solid var(--line-2);
+	border-radius: var(--radius);
+	background: var(--surface);
+	color: var(--text);
+	font-size: 14px;
 }
 
 .service-detail-summary {
@@ -357,7 +500,7 @@
 .calendar-day-state {
 	font-size: 10px;
 	color: var(--text-3);
-	display: none;
+	display: block;
 }
 
 .calendar-day:hover,
@@ -370,6 +513,20 @@
 .calendar-day.is-today {
 	border-color: rgba(194, 65, 12, 0.35);
 	background: linear-gradient(180deg, #fff7ed 0%, #fff 100%);
+}
+
+.calendar-day.is-selected {
+	border-color: var(--accent);
+	box-shadow: 0 0 0 3px rgba(201, 66, 14, 0.12);
+}
+
+.calendar-day-unavailable {
+	opacity: 0.35;
+	background: rgba(255, 255, 255, 0.45);
+}
+
+.calendar-day-unavailable .calendar-day-state {
+	color: var(--text-3);
 }
 
 .calendar-day.is-weekend .calendar-day-number {

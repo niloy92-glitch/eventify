@@ -1,5 +1,6 @@
 import requests
 from urllib.parse import urlencode
+
 from django.contrib.auth import authenticate, get_user_model, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.tokens import default_token_generator
@@ -19,18 +20,16 @@ from .services import (
     DJANGO_ADMIN_URL,
     add_auth_notice,
     auth_context,
-    build_google_auth_url,
-    create_user_from_registration,
-    dashboard_context,
     admin_activity_logs_data,
     admin_approvals_data,
     admin_base_context,
     admin_dashboard_data,
     admin_users_data,
+    build_google_auth_url,
     client_base_context,
     client_dashboard_data,
-    vendor_base_context,
-    vendor_dashboard_data,
+    create_user_from_registration,
+    dashboard_context,
     exchange_google_code_for_token,
     fetch_google_userinfo,
     google_oauth_configured,
@@ -39,6 +38,8 @@ from .services import (
     normalize_role,
     role_dashboard_url,
     send_verification_email,
+    vendor_base_context,
+    vendor_dashboard_data,
     verification_required,
 )
 
@@ -443,18 +444,6 @@ def client_dashboard_view(request: HttpRequest) -> HttpResponse:
 
 @login_required(login_url="users:login")
 @require_GET
-def client_my_events_view(request: HttpRequest) -> HttpResponse:
-    redirect_response = _client_access_redirect(request)
-    if redirect_response is not None:
-        return redirect_response
-
-    context = client_base_context(request, "my_events")
-    context.update({"page_name": "My Events"})
-    return render(request, "users/client/placeholder.html", context)
-
-
-@login_required(login_url="users:login")
-@require_GET
 def vendor_dashboard_view(request: HttpRequest) -> HttpResponse:
     redirect_response = _vendor_access_redirect(request)
     if redirect_response is not None:
@@ -475,18 +464,6 @@ def vendor_services_view(request: HttpRequest) -> HttpResponse:
     # redirect to services app vendor list
     from django.shortcuts import redirect
     return redirect("services:vendor_services")
-
-
-@login_required(login_url="users:login")
-@require_GET
-def vendor_events_view(request: HttpRequest) -> HttpResponse:
-    redirect_response = _vendor_access_redirect(request)
-    if redirect_response is not None:
-        return redirect_response
-
-    context = vendor_base_context(request, "events")
-    context.update({"page_name": "Events"})
-    return render(request, "users/vendor/placeholder.html", context)
 
 
 @login_required(login_url="users:login")

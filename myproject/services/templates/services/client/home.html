@@ -13,6 +13,9 @@
   <p class="muted">Browse services offered by vendors.</p>
 </section>
 
+{{ services_payload|json_script:"services-data" }}
+{{ client_upcoming_events_payload|json_script:"client-events-data" }}
+
 <section class="card">
   <div class="service-grid">
     {% for svc in services %}
