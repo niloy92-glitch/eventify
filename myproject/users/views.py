@@ -456,18 +456,6 @@ def vendor_dashboard_view(request: HttpRequest) -> HttpResponse:
 
 @login_required(login_url="users:login")
 @require_GET
-def vendor_services_view(request: HttpRequest) -> HttpResponse:
-    redirect_response = _vendor_access_redirect(request)
-    if redirect_response is not None:
-        return redirect_response
-
-    # redirect to services app vendor list
-    from django.shortcuts import redirect
-    return redirect("services:vendor_services")
-
-
-@login_required(login_url="users:login")
-@require_GET
 def vendor_messages_view(request: HttpRequest) -> HttpResponse:
     redirect_response = _vendor_access_redirect(request)
     if redirect_response is not None:

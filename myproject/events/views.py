@@ -154,8 +154,8 @@ def client_event_detail_view(request: HttpRequest, event_id: int) -> HttpRespons
 			"selected_event": selected_event,
 			"event": selected_event,
 			"event_form": EventForm(instance=event),
-			"back_url": reverse("users:client_my_events"),
-			"update_url": reverse("users:client_event_update", args=[event.pk]),
+			"back_url": reverse("events:client_my_events"),
+			"update_url": reverse("events:client_event_update", args=[event.pk]),
 		}
 	)
 	return render(request, "users/client/event_detail.html", context)
@@ -172,12 +172,12 @@ def client_event_create_view(request: HttpRequest) -> HttpResponse:
 	if not form.is_valid():
 		error_messages = [f"{field}: {', '.join(errors)}" for field, errors in form.errors.items()]
 		error_msg = " | ".join(error_messages)
-		return redirect(add_auth_notice(reverse("users:client_my_events"), f"Invalid input: {error_msg}"))
+		return redirect(add_auth_notice(reverse("events:client_my_events"), f"Invalid input: {error_msg}"))
 
 	event = form.save(commit=False)
 	event.client = request.user
 	event.save()
-	return redirect(add_auth_notice(reverse("users:client_my_events"), AUTH_MESSAGE_KEYS["event_created"]))
+	return redirect(add_auth_notice(reverse("events:client_my_events"), AUTH_MESSAGE_KEYS["event_created"]))
 
 
 @login_required(login_url="users:login")
@@ -191,11 +191,11 @@ def client_event_update_view(request: HttpRequest, event_id: int) -> HttpRespons
 	form = EventForm(request.POST, instance=event)
 	if form.is_valid():
 		form.save()
-		return redirect(add_auth_notice(f"{reverse('users:client_my_events')}?event={event.pk}", AUTH_MESSAGE_KEYS["event_updated"]))
+		return redirect(add_auth_notice(f"{reverse('events:client_my_events')}?event={event.pk}", AUTH_MESSAGE_KEYS["event_updated"]))
 
 	error_messages = [f"{field}: {', '.join(errors)}" for field, errors in form.errors.items()]
 	error_msg = " | ".join(error_messages)
-	return redirect(add_auth_notice(f"{reverse('users:client_my_events')}?event={event.pk}", f"Update failed: {error_msg}"))
+	return redirect(add_auth_notice(f"{reverse('events:client_my_events')}?event={event.pk}", f"Update failed: {error_msg}"))
 
 
 @login_required(login_url="users:login")
@@ -211,9 +211,9 @@ def client_event_payment_view(request: HttpRequest, event_id: int) -> HttpRespon
 		event.payment_method = form.cleaned_data["payment_method"]
 		event.payment_saved_at = timezone.now()
 		event.save(update_fields=["payment_method", "payment_saved_at", "updated_at"])
-		return redirect(add_auth_notice(f"{reverse('users:client_my_events')}?event={event.pk}", AUTH_MESSAGE_KEYS["payment_updated"]))
+		return redirect(add_auth_notice(f"{reverse('events:client_my_events')}?event={event.pk}", AUTH_MESSAGE_KEYS["payment_updated"]))
 
-	return redirect(add_auth_notice(f"{reverse('users:client_my_events')}?event={event.pk}", AUTH_MESSAGE_KEYS["payment_update_failed"]))
+	return redirect(add_auth_notice(f"{reverse('events:client_my_events')}?event={event.pk}", AUTH_MESSAGE_KEYS["payment_update_failed"]))
 
 
 @login_required(login_url="users:login")
@@ -225,10 +225,10 @@ def client_event_delete_view(request: HttpRequest, event_id: int) -> HttpRespons
 
 	event = get_object_or_404(Event, pk=event_id, client=request.user)
 	if event.service_requests.exists():
-		return redirect(add_auth_notice(f"{reverse('users:client_my_events')}?event={event.pk}", AUTH_MESSAGE_KEYS["event_delete_failed"]))
+		return redirect(add_auth_notice(f"{reverse('events:client_my_events')}?event={event.pk}", AUTH_MESSAGE_KEYS["event_delete_failed"]))
 
 	event.delete()
-	return redirect(add_auth_notice(reverse("users:client_my_events"), AUTH_MESSAGE_KEYS["event_deleted"]))
+	return redirect(add_auth_notice(reverse("events:client_my_events"), AUTH_MESSAGE_KEYS["event_deleted"]))
 
 
 @login_required(login_url="users:login")
@@ -293,63 +293,3 @@ def _booking_status_badge(status: str) -> str:
 		return "rejected"
 	return "pending"
 
-
-@login_required(login_url="users:login")
-@require_POST
-def book_service_request(request: HttpRequest) -> HttpResponse:
-	if getattr(request.user, "role", None) != "client":
-		return redirect("users:login")
-
-	service_id = str(request.POST.get("service_id", "")).strip()
-	event_id = str(request.POST.get("event_id", "")).strip()
-	if not service_id.isdigit() or not event_id.isdigit():
-		return redirect(add_auth_notice(reverse("services:services_home"), AUTH_MESSAGE_KEYS["booking_update_failed"]))
-
-	service = get_object_or_404(Service.objects.select_related("vendor"), pk=int(service_id), is_approved=True)
-	event = get_object_or_404(Event, pk=int(event_id), client=request.user)
-
-	if service.service_type == "venue" and event.has_own_venue:
-		return redirect(add_auth_notice(reverse("services:services_home"), AUTH_MESSAGE_KEYS["booking_update_failed"]))
-
-	if event.event_date < timezone.localdate():
-		return redirect(add_auth_notice(reverse("services:services_home"), AUTH_MESSAGE_KEYS["booking_update_failed"]))
-
-	if not ServiceAvailabilitySlot.objects.filter(service=service, available_date=event.event_date, is_active=True).exists():
-		return redirect(add_auth_notice(reverse("services:services_home"), AUTH_MESSAGE_KEYS["booking_update_failed"]))
-
-	booking, created = EventServiceBooking.objects.get_or_create(
-		event=event,
-		service=service,
-		defaults={
-			"vendor": service.vendor,
-			"requested_date": event.event_date,
-			"price_snapshot": service.price,
-			"status": "pending",
-		},
-	)
-	if not created and booking.status != "approved":
-		booking.vendor = service.vendor
-		booking.requested_date = event.event_date
-		booking.price_snapshot = service.price
-		booking.status = "pending"
-		booking.save(update_fields=["vendor", "requested_date", "price_snapshot", "status", "updated_at"])
-
-	return redirect(add_auth_notice(reverse("services:services_home"), AUTH_MESSAGE_KEYS["booking_requested"]))
-
-
-@login_required(login_url="users:login")
-@require_POST
-def vendor_booking_request_update(request: HttpRequest) -> HttpResponse:
-	if getattr(request.user, "role", None) != "vendor":
-		return redirect("users:login")
-
-	request_id = str(request.POST.get("request_id", "")).strip()
-	decision = str(request.POST.get("decision", "")).strip().lower()
-	if not request_id.isdigit() or decision not in {"approve", "reject"}:
-		return redirect(add_auth_notice(reverse("users:vendor_dashboard"), AUTH_MESSAGE_KEYS["booking_update_failed"]))
-
-	booking = get_object_or_404(EventServiceBooking.objects.select_related("service", "event"), pk=int(request_id), service__vendor=request.user)
-	booking.status = "approved" if decision == "approve" else "rejected"
-	booking.responded_at = timezone.now()
-	booking.save(update_fields=["status", "responded_at", "updated_at"])
-	return redirect(add_auth_notice(reverse("users:vendor_dashboard"), AUTH_MESSAGE_KEYS["booking_updated"]))

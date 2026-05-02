@@ -147,19 +147,15 @@ document.addEventListener('DOMContentLoaded', function () {
     bookingEventId.value = String(selectedEventId || '');
 
     const event = upcomingEventMap.get(String(selectedEventId || '')) || null;
-    const canBookSlot = Boolean(event && availabilitySet.has(event.event_date));
-    const venueBlocked = Boolean(event && selectedService.service_type === 'venue' && event.has_own_venue);
 
-    bookingSubmit.disabled = !event || !canBookSlot || venueBlocked;
+    bookingSubmit.disabled = !event;
 
     if (!event) {
-      bookingStatus.textContent = 'Choose an event date that matches an available slot to continue.';
-    } else if (venueBlocked) {
-      bookingStatus.textContent = 'This event already has its own venue, so venue services are blocked.';
-    } else if (!canBookSlot) {
-      bookingStatus.textContent = 'This event date does not match an available slot on the calendar.';
+      bookingStatus.textContent = 'Choose an event to continue.';
+      bookingStatus.style.color = '';
     } else {
-      bookingStatus.textContent = 'This event matches an available slot and is ready to book.';
+      bookingStatus.textContent = 'Ready to submit booking request.';
+      bookingStatus.style.color = '';
     }
 
     persistState();
@@ -272,7 +268,11 @@ document.addEventListener('DOMContentLoaded', function () {
     bookingForm.addEventListener('submit', function (event) {
       if (!selectedService || !selectedEventId || bookingSubmit.disabled) {
         event.preventDefault();
+        return;
       }
+      // Standard form submission without fetch API.
+      bookingSubmit.disabled = true;
+      bookingSubmit.textContent = "Booking...";
     });
   }
 

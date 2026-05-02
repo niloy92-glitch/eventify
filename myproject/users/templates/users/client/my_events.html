@@ -27,7 +27,7 @@
   <div class="event-list-panel" id="client-events-list-panel">
     <div class="event-grid" id="client-events-list">
       {% for event in events %}
-        <a class="event-card" href="{% url 'users:client_event_detail' event.id %}">
+        <a class="event-card" href="{% url 'events:client_event_detail' event.id %}">
           <div class="event-card-top">
             <div>
               <p class="event-card-kicker">{{ event.event_date_label }}</p>
