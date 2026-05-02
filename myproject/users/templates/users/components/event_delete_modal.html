@@ -2,7 +2,7 @@
   <div class="modal-panel">
     <h2 id="event-delete-title">Delete Event</h2>
     <p id="event-delete-text">Enter your password to delete this event.</p>
-    <form id="event-delete-form" method="post" action="{% url 'users:client_event_delete' 0 %}" data-delete-url-template="{% url 'users:client_event_delete' 0 %}">
+    <form id="event-delete-form" method="post" action="{% url 'events:client_event_delete' 0 %}" data-delete-url-template="{% url 'events:client_event_delete' 0 %}">
       {% csrf_token %}
       <input type="password" name="password" id="event-delete-password" placeholder="Password" />
       <div class="modal-actions">

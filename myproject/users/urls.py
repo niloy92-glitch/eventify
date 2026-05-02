@@ -4,7 +4,6 @@ from django.urls import path
 from django.urls import reverse_lazy
 
 from . import views
-from events import views as event_views
 
 app_name = "users"
 
@@ -47,20 +46,11 @@ urlpatterns = [
         name="password_reset_complete",
     ),
     path("client/dashboard/", views.client_dashboard_view, name="client_dashboard"),
-    path("client/my-events/", event_views.client_my_events_view, name="client_my_events"),
-    path("client/events/<int:event_id>/", event_views.client_event_detail_view, name="client_event_detail"),
-    path("client/events/create/", event_views.client_event_create_view, name="client_event_create"),
-    path("client/events/<int:event_id>/update/", event_views.client_event_update_view, name="client_event_update"),
-    path("client/events/<int:event_id>/payment/", event_views.client_event_payment_view, name="client_event_payment"),
-    path("client/events/<int:event_id>/delete/", event_views.client_event_delete_view, name="client_event_delete"),
     path("client/messages/", views.client_messages_view, name="client_messages"),
     path("client/profile/", views.client_profile_view, name="client_profile"),
     path("client/profile/update/", views.client_profile_update_view, name="client_profile_update"),
     path("client/profile/delete/", views.client_delete_account_view, name="client_delete_account"),
     path("vendor/dashboard/", views.vendor_dashboard_view, name="vendor_dashboard"),
-    path("vendor/services/", views.vendor_services_view, name="vendor_services"),
-    path("vendor/events/", event_views.vendor_events_view, name="vendor_events"),
-    path("vendor/booking-requests/", event_views.vendor_booking_requests_view, name="vendor_booking_requests"),
     path("vendor/messages/", views.vendor_messages_view, name="vendor_messages"),
     path("vendor/profile/", views.vendor_profile_view, name="vendor_profile"),
     path("vendor/profile/update/", views.vendor_profile_update_view, name="vendor_profile_update"),

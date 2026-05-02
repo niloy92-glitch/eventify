@@ -4,11 +4,11 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods, require_GET, require_POST
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.utils import timezone
 
 from .models import ApprovalRequest, Service, ServiceAvailabilitySlot
-from events.models import Event
+from events.models import Event, EventServiceBooking
 from .forms import ServiceForm
 from users.services import AUTH_MESSAGE_KEYS, add_auth_notice, client_base_context, vendor_base_context
 
@@ -146,4 +146,64 @@ def services_home(request: HttpRequest) -> HttpResponse:
     context.update({"services": services, "services_payload": services_payload, "page_name": "Home", "client_upcoming_events_payload": upcoming_events})
     return render(request, "services/client/home.html", context)
 
+@login_required(login_url="users:login")
+@require_POST
+def book_service_request(request: HttpRequest) -> HttpResponse:
+	if getattr(request.user, "role", None) != "client":
+		return redirect("users:login")
 
+	service_id = str(request.POST.get("service_id", "")).strip()
+	event_id = str(request.POST.get("event_id", "")).strip()
+	
+	if not service_id.isdigit() or not event_id.isdigit():
+		return redirect(add_auth_notice(reverse("services:services_home"), "Invalid service or event ID."))
+
+	service = get_object_or_404(Service.objects.select_related("vendor"), pk=int(service_id), is_approved=True)
+	event = get_object_or_404(Event, pk=int(event_id), client=request.user)
+
+	if service.service_type == "venue" and event.has_own_venue:
+		return redirect(add_auth_notice(reverse("services:services_home"), "This event already has its own venue, so venue services are blocked."))
+
+	if event.event_date < timezone.localdate():
+		return redirect(add_auth_notice(reverse("services:services_home"), "Cannot book a service for a past event."))
+
+	if not ServiceAvailabilitySlot.objects.filter(service=service, available_date=event.event_date, is_active=True).exists():
+		return redirect(add_auth_notice(reverse("services:services_home"), "This event date does not match an available slot on the calendar."))
+
+	booking, created = EventServiceBooking.objects.get_or_create(
+		event=event,
+		service=service,
+		defaults={
+			"vendor": service.vendor,
+			"requested_date": event.event_date,
+			"price_snapshot": service.price,
+			"status": "pending",
+		},
+	)
+	if not created and booking.status != "approved":
+		booking.vendor = service.vendor
+		booking.requested_date = event.event_date
+		booking.price_snapshot = service.price
+		booking.status = "pending"
+		booking.save(update_fields=["vendor", "requested_date", "price_snapshot", "status", "updated_at"])
+
+	msg = AUTH_MESSAGE_KEYS["booking_requested"]
+	return redirect(add_auth_notice(reverse("services:services_home"), msg))
+
+
+@login_required(login_url="users:login")
+@require_POST
+def vendor_booking_request_update(request: HttpRequest) -> HttpResponse:
+	if getattr(request.user, "role", None) != "vendor":
+		return redirect("users:login")
+
+	request_id = str(request.POST.get("request_id", "")).strip()
+	decision = str(request.POST.get("decision", "")).strip().lower()
+	if not request_id.isdigit() or decision not in {"approve", "reject"}:
+		return redirect(add_auth_notice(reverse("users:vendor_dashboard"), AUTH_MESSAGE_KEYS["booking_update_failed"]))
+
+	booking = get_object_or_404(EventServiceBooking.objects.select_related("service", "event"), pk=int(request_id), service__vendor=request.user)
+	booking.status = "approved" if decision == "approve" else "rejected"
+	booking.responded_at = timezone.now()
+	booking.save(update_fields=["status", "responded_at", "updated_at"])
+	return redirect(add_auth_notice(reverse("users:vendor_dashboard"), AUTH_MESSAGE_KEYS["booking_updated"]))

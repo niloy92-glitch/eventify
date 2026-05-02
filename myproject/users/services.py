@@ -410,17 +410,17 @@ def vendor_base_context(request: HttpRequest, active_menu: str) -> dict:
         },
         {
             "label": "Services",
-            "href": reverse("users:vendor_services"),
+            "href": reverse("services:vendor_services"),
             "active": active_menu == "services",
         },
         {
             "label": "Events",
-            "href": reverse("users:vendor_events"),
+            "href": reverse("events:vendor_events"),
             "active": active_menu == "events",
         },
         {
             "label": "Booking Requests",
-            "href": reverse("users:vendor_booking_requests"),
+            "href": reverse("events:vendor_booking_requests"),
             "active": active_menu == "booking_requests",
         },
         {
@@ -554,7 +554,7 @@ def client_base_context(request: HttpRequest, active_menu: str) -> dict:
         },
         {
             "label": "My Events",
-            "href": reverse("users:client_my_events"),
+            "href": reverse("events:client_my_events"),
             "active": active_menu == "my_events",
         },
         {
