@@ -31,7 +31,7 @@ from django.utils.encoding import force_bytes
 from django.utils import timezone
 from django.utils.http import urlsafe_base64_encode
 
-from .models import ApprovalStatusChoices
+from .models import ApprovalStatusChoices, Notification, NotificationCategoryChoices
 
 
 logger = logging.getLogger(__name__)
@@ -152,6 +152,62 @@ def add_auth_notice(url: str, message_key: str) -> str:
 
 def is_django_admin_user(user) -> bool:
     return bool(getattr(user, "is_staff", False) or getattr(user, "is_superuser", False))
+
+
+def _notification_time_label(created_at) -> str:
+    localized = timezone.localtime(created_at)
+    return localized.strftime("%b %d, %I:%M %p").replace(" 0", " ")
+
+
+def serialize_notification(notification: Notification) -> dict:
+    return {
+        "id": notification.pk,
+        "title": notification.title,
+        "message": notification.message,
+        "category": notification.category,
+        "link_url": notification.link_url,
+        "is_seen": notification.is_seen,
+        "created_at_label": _notification_time_label(notification.created_at),
+    }
+
+
+def notification_queryset(recipient):
+    return Notification.objects.filter(recipient=recipient).exclude(category=NotificationCategoryChoices.MESSAGE).order_by("-created_at")
+
+
+def notification_context(request: HttpRequest, limit: int = 8) -> dict:
+    notifications = notification_queryset(request.user)
+    return {
+        "notification_items": [serialize_notification(item) for item in notifications[:limit]],
+        "notification_unseen_count": notifications.filter(is_seen=False).count(),
+    }
+
+
+def notify_user(recipient, title: str, message: str, category: str = NotificationCategoryChoices.SYSTEM, link_url: str = ""):
+    if recipient is None:
+        return None
+    return Notification.objects.create(
+        recipient=recipient,
+        title=str(title).strip()[:120],
+        message=str(message).strip(),
+        category=category,
+        link_url=str(link_url).strip(),
+    )
+
+
+def notify_admins_of_vendor_registration(vendor) -> None:
+    if vendor is None or getattr(vendor, "role", None) != "vendor":
+        return
+
+    admin_users = get_user_model().objects.filter(role="admin", is_active=True)
+    for admin_user in admin_users:
+        notify_user(
+            admin_user,
+            "New vendor request",
+            f"{vendor.get_full_name()} registered as a vendor and is waiting for approval.",
+            category=NotificationCategoryChoices.REQUEST,
+            link_url=reverse("users:admin_approvals"),
+        )
 
 
 # ── Context builders ─────────────────────────────────────────────────────────
@@ -435,7 +491,7 @@ def vendor_base_context(request: HttpRequest, active_menu: str) -> dict:
         "initials": initials,
         "vendor_nav_links": nav_links,
         "vendor_profile_url": reverse("users:vendor_profile"),
-        "notification_items": [],
+        **notification_context(request),
     }
 
 
@@ -514,7 +570,7 @@ def admin_base_context(request: HttpRequest, active_menu: str) -> dict:
         "initials": initials,
         "admin_nav_links": nav_links,
         "admin_profile_url": reverse("users:admin_profile"),
-        "notification_items": [],
+        **notification_context(request),
     }
 
 
@@ -577,7 +633,7 @@ def client_base_context(request: HttpRequest, active_menu: str) -> dict:
         "initials": initials,
         "client_nav_links": nav_links,
         "client_profile_url": reverse("users:client_profile"),
-        "notification_items": [],
+        **notification_context(request),
     }
 
 
@@ -920,12 +976,17 @@ def create_user_from_registration(cleaned_data: dict, require_verification: bool
     from django.apps import apps
 
     user_class = apps.get_model(user_model)
-    return user_class.objects.create_user(
+    user = user_class.objects.create_user(
         email=cleaned_data["email"],
         password=cleaned_data["password"],
         role=role,
         **extra_fields,
     )
+
+    if role == "vendor":
+        notify_admins_of_vendor_registration(user)
+
+    return user
 
 
 # ── Google OAuth helpers ─────────────────────────────────────────────────────

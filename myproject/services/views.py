@@ -6,11 +6,15 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_http_methods, require_GET, require_POST
 from django.http import HttpRequest, HttpResponse
 from django.utils import timezone
+from django.contrib.auth import get_user_model
 
 from services.models import ApprovalRequest, Service, ServiceAvailabilitySlot
 from events.models import Event, EventServiceBooking
 from services.forms import ServiceForm
-from users.services import AUTH_MESSAGE_KEYS, add_auth_notice, client_base_context, vendor_base_context
+from users.services import AUTH_MESSAGE_KEYS, add_auth_notice, client_base_context, notify_user, vendor_base_context
+
+
+User = get_user_model()
 
 
 def _ensure_service_availability(service: Service, days_ahead: int = 90) -> list[str]:
@@ -79,6 +83,21 @@ def vendor_service_create(request: HttpRequest) -> HttpResponse:
             _ensure_service_availability(service)
             # create an approval request for admin
             ApprovalRequest.objects.create(request_type="service", service=service, vendor=request.user)
+            for admin_user in User.objects.filter(role="admin", is_active=True):
+                notify_user(
+                    admin_user,
+                    "New service request",
+                    f"{request.user.get_full_name()} submitted '{service.name}' for approval.",
+                    category="request",
+                    link_url=reverse("users:admin_approvals"),
+                )
+            notify_user(
+                request.user,
+                "Service submitted",
+                f"Your service '{service.name}' is waiting for approval.",
+                category="request",
+                link_url=reverse("services:vendor_services"),
+            )
             return redirect(reverse("services:vendor_services"))
     else:
         form = ServiceForm()
@@ -149,79 +168,103 @@ def services_home(request: HttpRequest) -> HttpResponse:
 @login_required(login_url="users:login")
 @require_POST
 def book_service_request(request: HttpRequest) -> HttpResponse:
-	if getattr(request.user, "role", None) != "client":
-		return redirect("users:login")
+    if getattr(request.user, "role", None) != "client":
+        return redirect("users:login")
 
-	service_id = str(request.POST.get("service_id", "")).strip()
-	event_id = str(request.POST.get("event_id", "")).strip()
-	
-	if not service_id.isdigit() or not event_id.isdigit():
-		return redirect(add_auth_notice(reverse("services:services_home"), "Invalid service or event ID."))
+    service_id = str(request.POST.get("service_id", "")).strip()
+    event_id = str(request.POST.get("event_id", "")).strip()
 
-	service = get_object_or_404(Service.objects.select_related("vendor"), pk=int(service_id), is_approved=True)
-	event = get_object_or_404(Event, pk=int(event_id), client=request.user)
+    if not service_id.isdigit() or not event_id.isdigit():
+        return redirect(add_auth_notice(reverse("services:services_home"), "Invalid service or event ID."))
 
-	if service.service_type == "venue" and event.has_own_venue:
-		return redirect(add_auth_notice(reverse("services:services_home"), "This event already has its own venue, so venue services are blocked."))
+    service = get_object_or_404(Service.objects.select_related("vendor"), pk=int(service_id), is_approved=True)
+    event = get_object_or_404(Event, pk=int(event_id), client=request.user)
 
-	if event.event_date < timezone.localdate():
-		return redirect(add_auth_notice(reverse("services:services_home"), "Cannot book a service for a past event."))
+    if service.service_type == "venue" and event.has_own_venue:
+        return redirect(add_auth_notice(reverse("services:services_home"), "This event already has its own venue, so venue services are blocked."))
 
-	if not ServiceAvailabilitySlot.objects.filter(service=service, available_date=event.event_date, is_active=True).exists():
-		return redirect(add_auth_notice(reverse("services:services_home"), "This event date does not match an available slot on the calendar."))
+    if event.event_date < timezone.localdate():
+        return redirect(add_auth_notice(reverse("services:services_home"), "Cannot book a service for a past event."))
 
-	booking, created = EventServiceBooking.objects.get_or_create(
-		event=event,
-		service=service,
-		defaults={
-			"vendor": service.vendor,
-			"requested_date": event.event_date,
-			"price_snapshot": service.price,
-			"status": "pending",
-		},
-	)
-	if not created and booking.status != "approved":
-		booking.vendor = service.vendor
-		booking.requested_date = event.event_date
-		booking.price_snapshot = service.price
-		booking.status = "pending"
-		booking.save(update_fields=["vendor", "requested_date", "price_snapshot", "status", "updated_at"])
+    if not ServiceAvailabilitySlot.objects.filter(service=service, available_date=event.event_date, is_active=True).exists():
+        return redirect(add_auth_notice(reverse("services:services_home"), "This event date does not match an available slot on the calendar."))
 
-	from chat.models import Conversation, Message
-	conv, _ = Conversation.objects.get_or_create(client=event.client, vendor=service.vendor)
-	Message.objects.create(
-		conversation=conv,
-		is_system=True,
-		content=f"System: Client requested to book '{service.name}' for '{event.title}' on {event.event_date.strftime('%B %d, %Y')}."
-	)
+    booking, created = EventServiceBooking.objects.get_or_create(
+        event=event,
+        service=service,
+        defaults={
+            "vendor": service.vendor,
+            "requested_date": event.event_date,
+            "price_snapshot": service.price,
+            "status": "pending",
+        },
+    )
+    if not created and booking.status != "approved":
+        booking.vendor = service.vendor
+        booking.requested_date = event.event_date
+        booking.price_snapshot = service.price
+        booking.status = "pending"
+        booking.save(update_fields=["vendor", "requested_date", "price_snapshot", "status", "updated_at"])
 
-	msg = AUTH_MESSAGE_KEYS["booking_requested"]
-	return redirect(add_auth_notice(reverse("services:services_home"), msg))
+    notify_user(
+        service.vendor,
+        "New booking request",
+        f"{request.user.get_full_name()} requested '{service.name}' for '{event.title}'.",
+        category="request",
+        link_url=reverse("events:vendor_booking_requests"),
+    )
+    notify_user(
+        request.user,
+        "Booking requested",
+        f"Your booking request for '{service.name}' was sent.",
+        category="request",
+        link_url=reverse("events:client_my_events"),
+    )
+
+    from chat.models import Conversation, Message
+
+    conv, _ = Conversation.objects.get_or_create(client=event.client, vendor=service.vendor)
+    Message.objects.create(
+        conversation=conv,
+        is_system=True,
+        content=f"System: Client requested to book '{service.name}' for '{event.title}' on {event.event_date.strftime('%B %d, %Y')}."
+    )
+
+    msg = AUTH_MESSAGE_KEYS["booking_requested"]
+    return redirect(add_auth_notice(reverse("services:services_home"), msg))
 
 
 @login_required(login_url="users:login")
 @require_POST
 def vendor_booking_request_update(request: HttpRequest) -> HttpResponse:
-	if getattr(request.user, "role", None) != "vendor":
-		return redirect("users:login")
+    if getattr(request.user, "role", None) != "vendor":
+        return redirect("users:login")
 
-	request_id = str(request.POST.get("request_id", "")).strip()
-	decision = str(request.POST.get("decision", "")).strip().lower()
-	if not request_id.isdigit() or decision not in {"approve", "reject"}:
-		return redirect(add_auth_notice(reverse("users:vendor_dashboard"), AUTH_MESSAGE_KEYS["booking_update_failed"]))
+    request_id = str(request.POST.get("request_id", "")).strip()
+    decision = str(request.POST.get("decision", "")).strip().lower()
+    if not request_id.isdigit() or decision not in {"approve", "reject"}:
+        return redirect(add_auth_notice(reverse("users:vendor_dashboard"), AUTH_MESSAGE_KEYS["booking_update_failed"]))
 
-	booking = get_object_or_404(EventServiceBooking.objects.select_related("service", "event"), pk=int(request_id), service__vendor=request.user)
-	booking.status = "approved" if decision == "approve" else "rejected"
-	booking.responded_at = timezone.now()
-	booking.save(update_fields=["status", "responded_at", "updated_at"])
+    booking = get_object_or_404(EventServiceBooking.objects.select_related("service", "event"), pk=int(request_id), service__vendor=request.user)
+    booking.status = "approved" if decision == "approve" else "rejected"
+    booking.responded_at = timezone.now()
+    booking.save(update_fields=["status", "responded_at", "updated_at"])
+    notify_user(
+        booking.event.client,
+        f"Booking {booking.status}",
+        f"Your request for '{booking.service.name}' was {booking.status}.",
+        category="approval",
+        link_url=reverse("events:client_my_events"),
+    )
 
-	from chat.models import Conversation, Message
-	conv, _ = Conversation.objects.get_or_create(client=booking.event.client, vendor=booking.service.vendor)
-	status_text = "approved" if decision == "approve" else "rejected"
-	Message.objects.create(
-		conversation=conv,
-		is_system=True,
-		content=f"System: Vendor has {status_text} the booking request for '{booking.service.name}'."
-	)
-	
-	return redirect(add_auth_notice(reverse("users:vendor_dashboard"), AUTH_MESSAGE_KEYS["booking_updated"]))
+    from chat.models import Conversation, Message
+
+    conv, _ = Conversation.objects.get_or_create(client=booking.event.client, vendor=booking.service.vendor)
+    status_text = "approved" if decision == "approve" else "rejected"
+    Message.objects.create(
+        conversation=conv,
+        is_system=True,
+        content=f"System: Vendor has {status_text} the booking request for '{booking.service.name}'."
+    )
+
+    return redirect(add_auth_notice(reverse("users:vendor_dashboard"), AUTH_MESSAGE_KEYS["booking_updated"]))

@@ -99,6 +99,7 @@
       "client-event-date",
       "client-event-venue-name",
       "client-event-venue-address",
+      "client-event-payment-method",
       "client-event-own-venue",
       "client-event-notes",
     ];

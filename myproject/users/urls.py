@@ -62,5 +62,7 @@ urlpatterns = [
     path("admin/approvals/update/", views.admin_approval_update_view, name="admin_approval_update"),
     path("admin/activity-logs/", views.admin_activity_logs_view, name="admin_activity_logs"),
     path("admin/profile/", views.admin_profile_view, name="admin_profile"),
+    path("notifications/feed/", views.notification_feed_view, name="notification_feed"),
+    path("notifications/mark-seen/", views.notification_mark_seen_view, name="notification_mark_seen"),
     path("logout/", views.logout_view, name="logout"),
 ]

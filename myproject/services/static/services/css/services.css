@@ -310,6 +310,46 @@
 }
 
 @media (max-width: 720px) {
+	.service-form,
+	.event-edit-form,
+	.modal-form {
+		gap: 14px;
+	}
+
+	.event-edit-modal-card,
+	.service-detail-panel {
+		width: min(100%, 100%);
+		max-height: calc(100vh - 32px);
+		padding: 18px;
+	}
+
+	.event-edit-modal-header,
+	.service-detail-header,
+	.event-card-top,
+	.event-detail-actions-top,
+	.modal-actions,
+	.form-actions {
+		flex-direction: column;
+		align-items: stretch;
+	}
+
+	.event-edit-actions .btn,
+	.modal-actions .btn,
+	.form-actions .btn {
+		width: 100%;
+		min-width: 0;
+	}
+
+	.event-own-venue-field {
+		align-items: flex-start;
+	}
+
+	.event-own-venue-field input[type="checkbox"] {
+		margin-top: 3px;
+	}
+}
+
+@media (max-width: 720px) {
 	.event-edit-grid {
 		grid-template-columns: 1fr;
 	}

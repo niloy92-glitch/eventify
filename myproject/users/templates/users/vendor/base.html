@@ -26,7 +26,17 @@
 
 {% block notification_items %}
   {% for notification in notification_items %}
-    <li>{{ notification }}</li>
+    <li class="notification-item{% if not notification.is_seen %} notification-item-unseen{% endif %}">
+      {% if notification.link_url %}<a class="notification-link" href="{{ notification.link_url }}">{% else %}<div class="notification-link">{% endif %}
+        <div class="notification-item-top">
+          <span class="notification-item-title">{{ notification.title }}</span>
+          <span class="notification-item-time">{{ notification.created_at_label }}</span>
+        </div>
+        <p class="notification-item-message">{{ notification.message }}</p>
+      {% if notification.link_url %}</a>{% else %}</div>{% endif %}
+    </li>
+  {% empty %}
+    <li class="notification-empty">No notifications yet.</li>
   {% endfor %}
 {% endblock %}
 
