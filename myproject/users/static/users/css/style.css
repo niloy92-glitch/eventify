@@ -271,6 +271,124 @@ label {
   margin-bottom: 6px;
 }
 
+form {
+  width: 100%;
+}
+
+.service-form,
+.event-edit-form,
+.modal-form {
+  display: grid;
+  gap: 16px;
+  width: 100%;
+}
+
+.form-field,
+.field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.form-field label,
+.field label {
+  margin-bottom: 0;
+}
+
+.form-field-input,
+.form-field input[type="text"],
+.form-field input[type="email"],
+.form-field input[type="password"],
+.form-field input[type="number"],
+.form-field input[type="date"],
+.form-field select,
+.form-field textarea,
+.field input,
+.field select,
+.field textarea,
+.page-card input,
+.page-card select,
+.page-card textarea,
+.auth-card input,
+.auth-card select,
+.auth-card textarea {
+  width: 100%;
+  max-width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 14px;
+  font-family: inherit;
+  transition: border-color .15s, box-shadow .15s;
+  outline: none;
+}
+
+.form-field-input:focus,
+.form-field input[type="text"]:focus,
+.form-field input[type="email"]:focus,
+.form-field input[type="password"]:focus,
+.form-field input[type="number"]:focus,
+.form-field input[type="date"]:focus,
+.form-field select:focus,
+.form-field textarea:focus,
+.field input:focus,
+.field select:focus,
+.field textarea:focus,
+.page-card input:focus,
+.page-card select:focus,
+.page-card textarea:focus,
+.auth-card input:focus,
+.auth-card select:focus,
+.auth-card textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(201,66,14,.10);
+}
+
+.form-field textarea,
+.field textarea,
+.page-card textarea,
+.auth-card textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.form-error {
+  color: var(--red);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.form-actions,
+.modal-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.form-actions .btn,
+.modal-actions .btn {
+  flex: 1 1 160px;
+  justify-content: center;
+}
+
+.event-own-venue-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 14px;
+  color: var(--text-2);
+}
+
+.event-own-venue-field input[type="checkbox"] {
+  margin: 0;
+  flex: 0 0 auto;
+}
+
 input[type="text"],
 input[type="email"],
 input[type="password"],
@@ -813,12 +931,27 @@ input[type="date"]:focus,
   .auth-panel { padding: 20px 12px; }
   .auth-card { width: 100%; padding: 22px; }
   .field-grid-2 { grid-template-columns: 1fr; }
+  .form-actions,
+  .modal-actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+  .form-actions .btn,
+  .modal-actions .btn {
+    width: 100%;
+    flex: 1 1 auto;
+  }
+  .row-between,
+  .row {
+    align-items: stretch;
+  }
   .toast-wrap {
     right: 10px;
     left: 10px;
     top: 10px;
   }
   .toast { min-width: 0; max-width: 100%; }
+  .container { width: min(1160px, 92%); }
 }
 
 /* ─────────────────────────────────────────

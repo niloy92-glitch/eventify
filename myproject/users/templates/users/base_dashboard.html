@@ -11,7 +11,13 @@
     <link rel="stylesheet" href="{% static 'users/css/admin_dashboard.css' %}" />
     {% block extra_head %}{% endblock %}
   </head>
-  <body class="admin-body" data-require-role="{% block body_role %}{% endblock %}">
+  <body
+    class="admin-body"
+    data-require-role="{% block body_role %}{% endblock %}"
+    data-notification-feed-url="{% url 'users:notification_feed' %}"
+    data-notification-mark-seen-url="{% url 'users:notification_mark_seen' %}"
+    data-notification-initial-unseen="{{ notification_unseen_count|default:0 }}"
+  >
     <div class="admin-layout">
       <aside class="admin-sidebar" aria-label="Primary">
         {% block sidebar_logo %}{% endblock %}
@@ -24,19 +30,16 @@
 
         <div class="sidebar-bottom nav-tools">
           <div class="notification-wrap">
-            <button
-              class="icon-btn"
-              type="button"
-              id="notification-toggle"
-              aria-haspopup="true"
-              aria-expanded="false"
-              aria-controls="notification-popover"
-            >
-              Notifications
+            <button class="icon-btn notification-button" type="button" id="notification-toggle" aria-haspopup="true" aria-expanded="false" aria-controls="notification-popover">
+              <span>Notifications</span>
+              <span class="notification-badge" id="notification-badge"{% if not notification_unseen_count %} hidden{% endif %}>{{ notification_unseen_count|default:0 }}</span>
             </button>
             <div class="notification-popover" id="notification-popover" hidden>
-              <p class="notification-title">Latest Alerts</p>
-              <ul>
+              <div class="notification-popover-head">
+                <p class="notification-title">Notifications</p>
+                <button class="notification-mark-read" type="button" id="notification-mark-read">Mark all read</button>
+              </div>
+              <ul id="notification-list">
                 {% block notification_items %}{% endblock %}
               </ul>
             </div>

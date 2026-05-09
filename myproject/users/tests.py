@@ -5,7 +5,7 @@ from django.urls import reverse
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 
-from .models import ApprovalStatusChoices
+from .models import ApprovalStatusChoices, Notification, NotificationCategoryChoices
 
 
 User = get_user_model()
@@ -224,6 +224,98 @@ class AuthFlowTests(TestCase):
 		self.assertEqual(target_user.role, "vendor")
 		self.assertEqual(target_user.company_name, "New Co")
 		self.assertTrue(target_user.email_verified)
+
+	def test_notification_feed_returns_only_current_users_notifications(self):
+		user = User.objects.create_user(
+			email="feed-user@example.com",
+			password="secret12345",
+			role="client",
+			email_verified=True,
+		)
+		other_user = User.objects.create_user(
+			email="other-user@example.com",
+			password="secret12345",
+			role="vendor",
+			email_verified=True,
+			company_name="Other Vendor",
+		)
+		Notification.objects.create(recipient=user, title="User item", message="Only visible to user")
+		Notification.objects.create(recipient=other_user, title="Other item", message="Hidden from user")
+		Notification.objects.create(
+			recipient=user,
+			title="Chat item",
+			message="Should stay out of the sidebar feed",
+			category=NotificationCategoryChoices.MESSAGE,
+		)
+		self.client.force_login(user)
+
+		response = self.client.get(reverse("users:notification_feed"))
+
+		self.assertEqual(response.status_code, 200)
+		self.assertContains(response, "User item")
+		self.assertNotContains(response, "Chat item")
+		self.assertNotContains(response, "Other item")
+		self.assertEqual(response.json()["notification_unseen_count"], 1)
+
+	def test_vendor_registration_notifies_admins(self):
+		admin_user = User.objects.create_user(
+			email="admin-request@example.com",
+			password="secret12345",
+			role="admin",
+			email_verified=True,
+		)
+
+		response = self.client.post(
+			reverse("users:register"),
+			{
+				"role": "vendor",
+				"vendor_company_name": "Fresh Vendor Co",
+				"vendor_email": "new-vendor@example.com",
+				"vendor_password": "secret12345",
+				"vendor_confirm_password": "secret12345",
+			},
+		)
+
+		self.assertEqual(response.status_code, 302)
+		self.assertTrue(
+			Notification.objects.filter(
+				recipient=admin_user,
+				title="New vendor request",
+				category=NotificationCategoryChoices.REQUEST,
+			).exists()
+		)
+
+	def test_admin_approval_update_notifies_vendor(self):
+		admin_user = User.objects.create_user(
+			email="admin-approve@example.com",
+			password="secret12345",
+			role="admin",
+			email_verified=True,
+		)
+		vendor_user = User.objects.create_user(
+			email="vendor-approve@example.com",
+			password="secret12345",
+			role="vendor",
+			email_verified=True,
+			company_name="Approve Me",
+			vendor_approval_status=ApprovalStatusChoices.PENDING,
+		)
+		self.client.force_login(admin_user)
+
+		response = self.client.post(
+			reverse("users:admin_approval_update"),
+			{
+				"decision": "approve",
+				"request_type": "vendor",
+				"request_id": vendor_user.pk,
+				"filter": "all",
+			},
+		)
+
+		self.assertEqual(response.status_code, 302)
+		vendor_user.refresh_from_db()
+		self.assertEqual(vendor_user.vendor_approval_status, ApprovalStatusChoices.ALLOWED)
+		self.assertTrue(Notification.objects.filter(recipient=vendor_user, title__icontains="Vendor").exists())
 
 	def test_admin_user_delete_removes_database_row(self):
 		admin_user = User.objects.create_user(

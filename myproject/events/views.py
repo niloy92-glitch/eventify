@@ -20,6 +20,7 @@ from users.services import (
 	is_django_admin_user,
 	login_redirect_url,
 	normalize_role,
+	notify_user,
 	vendor_dashboard_data,
 	vendor_base_context,
 )
@@ -177,6 +178,13 @@ def client_event_create_view(request: HttpRequest) -> HttpResponse:
 	event = form.save(commit=False)
 	event.client = request.user
 	event.save()
+	notify_user(
+		request.user,
+		"Event created",
+		f"Your event '{event.title}' was created.",
+		category="system",
+		link_url=reverse("events:client_my_events"),
+	)
 	return redirect(add_auth_notice(reverse("events:client_my_events"), AUTH_MESSAGE_KEYS["event_created"]))
 
 
@@ -191,6 +199,13 @@ def client_event_update_view(request: HttpRequest, event_id: int) -> HttpRespons
 	form = EventForm(request.POST, instance=event)
 	if form.is_valid():
 		form.save()
+		notify_user(
+			request.user,
+			"Event updated",
+			f"Your event '{event.title}' was updated.",
+			category="system",
+			link_url=reverse("events:client_my_events"),
+		)
 		return redirect(add_auth_notice(f"{reverse('events:client_my_events')}?event={event.pk}", AUTH_MESSAGE_KEYS["event_updated"]))
 
 	error_messages = [f"{field}: {', '.join(errors)}" for field, errors in form.errors.items()]
@@ -211,6 +226,13 @@ def client_event_payment_view(request: HttpRequest, event_id: int) -> HttpRespon
 		event.payment_method = form.cleaned_data["payment_method"]
 		event.payment_saved_at = timezone.now()
 		event.save(update_fields=["payment_method", "payment_saved_at", "updated_at"])
+		notify_user(
+			request.user,
+			"Payment updated",
+			f"Your payment method for '{event.title}' was saved.",
+			category="system",
+			link_url=reverse("events:client_my_events"),
+		)
 		return redirect(add_auth_notice(f"{reverse('events:client_my_events')}?event={event.pk}", AUTH_MESSAGE_KEYS["payment_updated"]))
 
 	return redirect(add_auth_notice(f"{reverse('events:client_my_events')}?event={event.pk}", AUTH_MESSAGE_KEYS["payment_update_failed"]))

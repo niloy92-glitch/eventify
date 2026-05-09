@@ -8,12 +8,13 @@ from django.core import signing
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
 from django.views.decorators.http import require_GET, require_POST
 
 from users.forms import AdminUserForm, LoginForm, RegisterForm
-from users.models import ApprovalStatusChoices
+from users.models import ApprovalStatusChoices, Notification
 from users.services import (
     AUTH_DEFAULT_ROLE,
     AUTH_MESSAGE_KEYS,
@@ -36,12 +37,17 @@ from users.services import (
     is_django_admin_user,
     login_redirect_url,
     normalize_role,
+    notify_user,
+    notify_admins_of_vendor_registration,
+    notification_context,
+    notification_queryset,
     role_dashboard_url,
     send_verification_email,
     vendor_base_context,
     vendor_dashboard_data,
     verification_required,
 )
+from events.forms import EventForm
 
 
 User = get_user_model()
@@ -264,6 +270,13 @@ def verify_email(request: HttpRequest, uidb64: str, token: str) -> HttpResponse:
         if not user.email_verified:
             user.email_verified = True
             user.save(update_fields=["email_verified"])
+            notify_user(
+                user,
+                "Email verified",
+                "Your email address was successfully verified.",
+                category="verification",
+                link_url=role_dashboard_url(user.role),
+            )
         return render(request, "verification_result.html", {
             "success": True,
             "heading": "Email Verified!",
@@ -382,11 +395,20 @@ def google_oauth_callback(request: HttpRequest) -> HttpResponse:
             role=role,
             **create_fields,
         )
+        if role == "vendor":
+            notify_admins_of_vendor_registration(user)
 
     if verification_required() and not user.email_verified:
         if google_email_verified:
             user.email_verified = True
             user.save(update_fields=["email_verified"])
+            notify_user(
+                user,
+                "Email verified",
+                "Your Google account was verified and your Eventify account is ready.",
+                category="verification",
+                link_url=role_dashboard_url(user.role),
+            )
         else:
             send_verification_email(request, user)
             return redirect(add_auth_notice(
@@ -438,7 +460,12 @@ def client_dashboard_view(request: HttpRequest) -> HttpResponse:
         return redirect_response
 
     context = client_base_context(request, "dashboard")
-    context.update(client_dashboard_data(request))
+    context.update(
+        {
+            **client_dashboard_data(request),
+            "event_form": EventForm(),
+        }
+    )
     return render(request, "users/client/dashboard.html", context)
 
 
@@ -610,12 +637,31 @@ def admin_user_update_view(request: HttpRequest, user_id: int) -> HttpResponse:
         return redirect_response
 
     user = get_object_or_404(User, pk=user_id, is_superuser=False)
+    previous_email_verified = user.email_verified
+    previous_vendor_status = user.vendor_approval_status
     requested_role = normalize_role(request.POST.get("role"))
     if requested_role in {"client", "vendor", "admin"}:
         user.role = requested_role
     form = AdminUserForm(request.POST, instance=user)
     if form.is_valid():
-        form.save()
+        updated_user = form.save()
+        if updated_user.email_verified != previous_email_verified:
+            notify_user(
+                updated_user,
+                "Verification updated",
+                "Your email verification status was updated by an administrator.",
+                category="verification",
+                link_url=role_dashboard_url(updated_user.role),
+            )
+        if updated_user.role == "vendor" and updated_user.vendor_approval_status != previous_vendor_status:
+            approval_label = "approved" if updated_user.vendor_approval_status == ApprovalStatusChoices.ALLOWED else "rejected"
+            notify_user(
+                updated_user,
+                f"Vendor {approval_label}",
+                f"Your vendor account was {approval_label}.",
+                category="approval",
+                link_url=role_dashboard_url(updated_user.role),
+            )
         return redirect(add_auth_notice(reverse("users:admin_users"), AUTH_MESSAGE_KEYS["user_updated"]))
 
     return redirect(add_auth_notice(reverse("users:admin_users"), AUTH_MESSAGE_KEYS["user_update_failed"]))
@@ -678,6 +724,14 @@ def admin_approval_update_view(request: HttpRequest) -> HttpResponse:
         vendor = get_object_or_404(User, pk=int(request_id), role="vendor")
         vendor.vendor_approval_status = target_status
         vendor.save(update_fields=["vendor_approval_status"])
+        approval_label = "approved" if target_status == ApprovalStatusChoices.ALLOWED else "rejected"
+        notify_user(
+            vendor,
+            f"Vendor {approval_label}",
+            f"Your vendor request was {approval_label} by an administrator.",
+            category="approval",
+            link_url=role_dashboard_url(vendor.role),
+        )
     else:
         from services.models import ApprovalRequest
 
@@ -688,8 +742,31 @@ def admin_approval_update_view(request: HttpRequest) -> HttpResponse:
         service = approval_request.service
         service.is_approved = target_status == ApprovalStatusChoices.ALLOWED
         service.save(update_fields=["is_approved"])
+        approval_label = "approved" if target_status == ApprovalStatusChoices.ALLOWED else "rejected"
+        notify_user(
+            approval_request.vendor,
+            f"Service {approval_label}",
+            f"Your service '{service.name}' was {approval_label} by an administrator.",
+            category="approval",
+            link_url=reverse("services:vendor_services"),
+        )
 
     return redirect(add_auth_notice(redirect_url, AUTH_MESSAGE_KEYS["approval_updated"]))
+
+
+@login_required(login_url="users:login")
+@require_GET
+def notification_feed_view(request: HttpRequest) -> JsonResponse:
+    payload = notification_context(request)
+    payload["ok"] = True
+    return JsonResponse(payload)
+
+
+@login_required(login_url="users:login")
+@require_POST
+def notification_mark_seen_view(request: HttpRequest) -> JsonResponse:
+    notification_queryset(request.user).filter(is_seen=False).update(is_seen=True, seen_at=timezone.now())
+    return JsonResponse({"ok": True, "notification_unseen_count": 0})
 
 
 @login_required(login_url="users:login")
