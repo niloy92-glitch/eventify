@@ -43,7 +43,7 @@
       <tbody id="users-table-body">
         {% for row in rows %}
           <tr data-user-role="{{ row.role }}">
-            <td>{{ row.name }}</td>
+            <td class="name-cell"><a href="{% url 'users:admin_user_profile' row.id %}">{{ row.name }}</a></td>
             <td>{{ row.email }}</td>
             <td>{{ row.role }}</td>
             <td>{{ row.company_name }}</td>

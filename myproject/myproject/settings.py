@@ -12,7 +12,12 @@ load_dotenv(BASE_DIR.parent / ".env")
 
 
 def env_bool(name: str, default: bool = False) -> bool:
-    return getenv(name, str(default)).strip().lower() in {"1", "true", "yes", "on"}
+    return getenv(name, str(default)).strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
 
 
 def env_int(name: str, default: int) -> int:
@@ -37,7 +42,9 @@ def env_first(names: list[str], default: str = "") -> str:
 SECRET_KEY = env_str("DJANGO_SECRET_KEY", "django-insecure-dev-key")
 DEBUG = env_bool("DEBUG", True)
 ALLOWED_HOSTS = [
-    host.strip() for host in env_str("ALLOWED_HOSTS", "*").split(",") if host.strip()
+    host.strip()
+    for host in env_str("ALLOWED_HOSTS", "*").split(",")
+    if host.strip()
 ]
 
 INSTALLED_APPS = [
@@ -123,8 +130,12 @@ AUTH_PASSWORD_VALIDATORS = [
         "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"
     },
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
-    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
-    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+    {
+        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"
+    },
+    {
+        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"
+    },
 ]
 
 LANGUAGE_CODE = "en-us"
@@ -143,7 +154,9 @@ REQUIRE_EMAIL_VERIFICATION = env_bool("REQUIRE_EMAIL_VERIFICATION", True)
 GOOGLE_OAUTH_CLIENT_ID = env_str("GOOGLE_OAUTH_CLIENT_ID", "")
 GOOGLE_OAUTH_CLIENT_SECRET = env_str("GOOGLE_OAUTH_CLIENT_SECRET", "")
 
-EMAIL_BACKEND = env_str("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
+EMAIL_BACKEND = env_str(
+    "EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend"
+)
 EMAIL_HOST = env_str("EMAIL_HOST", "smtp.gmail.com")
 EMAIL_PORT = env_int("EMAIL_PORT", 587)
 EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", True)
@@ -158,6 +171,8 @@ EMAIL_BRAND_CARD = env_str("EMAIL_BRAND_CARD", "#ffffff")
 EMAIL_BRAND_TEXT = env_str("EMAIL_BRAND_TEXT", "#1f2937")
 EMAIL_BRAND_MUTED = env_str("EMAIL_BRAND_MUTED", "#6b7280")
 
-SENDER_ADDRESS = env_str("SENDER_ADDRESS", EMAIL_HOST_USER or "no-reply@example.com")
+SENDER_ADDRESS = env_str(
+    "SENDER_ADDRESS", EMAIL_HOST_USER or "no-reply@example.com"
+)
 SENDER_NAME = env_str("SENDER_NAME", EMAIL_BRAND_NAME)
 DEFAULT_FROM_EMAIL = f"{SENDER_NAME} <{SENDER_ADDRESS}>"

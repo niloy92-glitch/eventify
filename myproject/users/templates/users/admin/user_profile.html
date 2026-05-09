@@ -1,0 +1,275 @@
+{% extends 'users/admin/base.html' %}
+
+{% block title %}User Profile - {{ target_user.first_name }} {{ target_user.last_name }}{% endblock %}
+
+{% block content %}
+<section class="card page-head users-page-head" style="height: auto; padding: 20px;">
+  <div class="row-between users-page-head-inner">
+    <div>
+      <a href="{% url 'users:admin_users' %}" class="btn" style="margin-bottom: 12px; display: inline-flex; width: fit-content;">&larr; Back to Users</a>
+      <h1>{{ target_user.first_name }} {{ target_user.last_name }}</h1>
+      <p class="muted">Viewing {{ target_user.role|title }} Account Details</p>
+    </div>
+    <div style="text-align: right;">
+      {% if target_user.email_verified %}
+        <span class="btn btn-primary" style="pointer-events: none; padding: 6px 12px; font-size: 12px; height: auto;">Verified</span>
+      {% else %}
+        <span class="btn danger-btn" style="pointer-events: none; padding: 6px 12px; font-size: 12px; height: auto;">Unverified</span>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+<div class="events-grid">
+  <!-- Profile details -->
+  <section class="card profile-card-panel">
+    <h2 style="font-size: 1.2rem; margin-bottom: 16px;">User Details</h2>
+    <div class="profile-grid">
+      <div>
+        <div class="profile-label">Email</div>
+        <div class="profile-value">{{ target_user.email }}</div>
+      </div>
+      <div>
+        <div class="profile-label">Phone</div>
+        <div class="profile-value">{{ target_user.phone|default:"Not provided" }}</div>
+      </div>
+      <div>
+        <div class="profile-label">Address</div>
+        <div class="profile-value">{{ target_user.address|default:"Not provided" }}</div>
+      </div>
+      {% if target_user.role == 'vendor' %}
+      <div>
+        <div class="profile-label">Company</div>
+        <div class="profile-value">{{ target_user.company_name|default:"Not provided" }}</div>
+      </div>
+      <div>
+        <div class="profile-label">Approval Status</div>
+        <div class="profile-value" style="text-transform: capitalize;">{{ target_user.get_vendor_approval_status_display|default:"Pending" }}</div>
+      </div>
+      {% endif %}
+      <div>
+        <div class="profile-label">Joined</div>
+        <div class="profile-value">{{ target_user.date_joined|date:"M d, Y" }}</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Calendar -->
+  <section class="card profile-card-panel">
+    <h2 style="font-size: 1.2rem; margin-bottom: 16px;">Booking Calendar</h2>
+    <div id="profile-calendar" style="max-width: 320px; width: 100%; margin: 0 auto;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <button type="button" id="cal-prev" class="btn" style="padding: 4px 10px; height: auto; min-height: 0;">Prev</button>
+        <h3 id="cal-month-year" style="margin: 0; font-size: 15px; font-family: var(--font-display);"></h3>
+        <button type="button" id="cal-next" class="btn" style="padding: 4px 10px; height: auto; min-height: 0;">Next</button>
+      </div>
+      
+      <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 4px;">
+        <div class="profile-label" style="text-align: center; font-size: 10px;">Sun</div>
+        <div class="profile-label" style="text-align: center; font-size: 10px;">Mon</div>
+        <div class="profile-label" style="text-align: center; font-size: 10px;">Tue</div>
+        <div class="profile-label" style="text-align: center; font-size: 10px;">Wed</div>
+        <div class="profile-label" style="text-align: center; font-size: 10px;">Thu</div>
+        <div class="profile-label" style="text-align: center; font-size: 10px;">Fri</div>
+        <div class="profile-label" style="text-align: center; font-size: 10px;">Sat</div>
+      </div>
+      
+      <div id="cal-grid" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px;">
+      </div>
+      
+      <div style="display: flex; gap: 12px; justify-content: center; margin-top: 16px;">
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <div style="width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--accent);"></div>
+          <span class="profile-label" style="font-size: 10px;">Booked</span>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- Modal for Events on a specific date -->
+<div class="modal" id="events-modal" aria-hidden="true">
+  <div class="modal-panel">
+    <h2 id="events-modal-title">Events</h2>
+    <div id="events-modal-content" style="margin-top: 16px; max-height: 400px; overflow-y: auto;"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn" data-close-modal="events-modal">Close</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+{{ events_json|json_script:"events-data" }}
+<script>
+  const eventsData = JSON.parse(document.getElementById('events-data').textContent);
+  const targetUserRole = "{{ target_user.role }}";
+
+  let currentDate = new Date();
+  
+  function renderCalendar() {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    
+    document.getElementById('cal-month-year').textContent = new Date(year, month, 1).toLocaleString('default', { month: 'long', year: 'numeric' });
+    
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    
+    const grid = document.getElementById('cal-grid');
+    grid.innerHTML = '';
+    
+    // Empty cells before start of month
+    for (let i = 0; i < firstDay; i++) {
+      const cell = document.createElement('div');
+      grid.appendChild(cell);
+    }
+    
+    const actualToday = new Date();
+    const todayStr = `${actualToday.getFullYear()}-${String(actualToday.getMonth() + 1).padStart(2, '0')}-${String(actualToday.getDate()).padStart(2, '0')}`;
+    
+    for (let day = 1; day <= daysInMonth; day++) {
+      const cell = document.createElement('div');
+      cell.style.display = 'flex';
+      cell.style.alignItems = 'center';
+      cell.style.justifyContent = 'center';
+      cell.style.aspectRatio = '1';
+      cell.style.borderRadius = '50%';
+      cell.style.cursor = 'default';
+      cell.style.fontSize = '14px';
+      
+      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      
+      cell.textContent = day;
+      
+      // Highlight today
+      if (dateStr === todayStr) {
+        cell.style.backgroundColor = 'var(--line-2, #e2e8f0)';
+      }
+      
+      if (eventsData[dateStr] && eventsData[dateStr].length > 0) {
+        // Has events
+        cell.style.border = '2px solid var(--accent)';
+        cell.style.color = 'var(--text)';
+        cell.style.fontWeight = '700';
+        cell.style.cursor = 'pointer';
+        cell.title = "Click to view events";
+        
+        cell.addEventListener('click', () => {
+          openEventsModal(dateStr, eventsData[dateStr]);
+        });
+        
+        // Hover effect
+        cell.addEventListener('mouseenter', () => {
+          cell.style.backgroundColor = 'var(--accent)';
+          cell.style.color = 'var(--ink-inv)';
+        });
+        cell.addEventListener('mouseleave', () => {
+          cell.style.backgroundColor = (dateStr === todayStr) ? 'var(--line-2, #e2e8f0)' : 'transparent';
+          cell.style.color = 'var(--text)';
+        });
+      } else {
+        cell.style.color = 'var(--text-3)';
+        cell.style.border = '1px solid transparent'; 
+        
+        cell.addEventListener('mouseenter', () => {
+          cell.style.backgroundColor = 'var(--surface-2)';
+        });
+        cell.addEventListener('mouseleave', () => {
+          cell.style.backgroundColor = (dateStr === todayStr) ? 'var(--line-2, #e2e8f0)' : 'transparent';
+        });
+      }
+      
+      grid.appendChild(cell);
+    }
+  }
+  
+  function openEventsModal(dateStr, eventsList) {
+    const formattedDate = new Date(dateStr + "T00:00:00").toLocaleDateString('default', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    document.getElementById('events-modal-title').textContent = formattedDate;
+    
+    const content = document.getElementById('events-modal-content');
+    content.innerHTML = '';
+    
+    if (eventsList.length === 0) {
+      content.innerHTML = '<p class="muted">No events found for this date.</p>';
+    } else {
+      const tableWrap = document.createElement('div');
+      tableWrap.className = 'table-wrap'; // Standard admin table wrapper
+      
+      const table = document.createElement('table');
+      
+      let thead = '<thead><tr>';
+      if (targetUserRole === 'client') {
+        thead += '<th>Title</th><th>Venue</th><th>Payment</th>';
+      } else if (targetUserRole === 'vendor') {
+        thead += '<th>Title</th><th>Service/s</th><th>Status</th>';
+      }
+      thead += '</tr></thead>';
+      
+      let tbody = '<tbody>';
+      
+      if (targetUserRole === 'vendor') {
+        // Group by event title for vendor
+        const groupedEvents = {};
+        eventsList.forEach(e => {
+          if (!groupedEvents[e.title]) {
+            groupedEvents[e.title] = { services: [], statuses: new Set() };
+          }
+          groupedEvents[e.title].services.push(e.service);
+          groupedEvents[e.title].statuses.add(e.status);
+        });
+        
+        for (const [title, data] of Object.entries(groupedEvents)) {
+          const servicesStr = data.services.join(', ');
+          const statusesStr = Array.from(data.statuses).join(', ');
+          tbody += `<tr><td>${title}</td><td>${servicesStr}</td><td style="text-transform: capitalize;">${statusesStr}</td></tr>`;
+        }
+      } else {
+        // Client events
+        eventsList.forEach(e => {
+          tbody += `<tr><td>${e.title}</td><td>${e.venue}</td><td style="text-transform: capitalize;">${e.payment || 'Not specified'}</td></tr>`;
+        });
+      }
+      
+      tbody += '</tbody>';
+      
+      table.innerHTML = thead + tbody;
+      tableWrap.appendChild(table);
+      content.appendChild(tableWrap);
+    }
+    
+    const modal = document.getElementById('events-modal');
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden', 'false');
+  }
+  
+  document.getElementById('cal-prev').addEventListener('click', () => {
+    currentDate.setMonth(currentDate.getMonth() - 1);
+    renderCalendar();
+  });
+  
+  document.getElementById('cal-next').addEventListener('click', () => {
+    currentDate.setMonth(currentDate.getMonth() + 1);
+    renderCalendar();
+  });
+  
+  document.querySelectorAll('[data-close-modal="events-modal"]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const modal = document.getElementById('events-modal');
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+    });
+  });
+  
+  document.getElementById('events-modal').addEventListener('click', (e) => {
+    if (e.target.id === 'events-modal') {
+      const modal = document.getElementById('events-modal');
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+    }
+  });
+  
+  renderCalendar();
+</script>
+{% endblock %}

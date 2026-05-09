@@ -31,7 +31,11 @@ from django.utils.encoding import force_bytes
 from django.utils import timezone
 from django.utils.http import urlsafe_base64_encode
 
-from .models import ApprovalStatusChoices, Notification, NotificationCategoryChoices
+from .models import (
+    ApprovalStatusChoices,
+    Notification,
+    NotificationCategoryChoices,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -92,10 +96,19 @@ AUTH_MESSAGE_KEYS = {
 
 AUTH_MESSAGES = {
     "EMAIL_VERIFIED": ("success", "Email verified. You can sign in now."),
-    "VERIFICATION_REQUIRED": ("info", "Please verify your email first. Check your inbox."),
+    "VERIFICATION_REQUIRED": (
+        "info",
+        "Please verify your email first. Check your inbox.",
+    ),
     "OAUTH_FAILED": ("error", "Google sign in failed. Please try again."),
-    "PASSWORD_RESET_DONE": ("success", "If your email exists, a reset link has been sent."),
-    "PASSWORD_RESET_COMPLETE": ("success", "Password reset successful. Please sign in."),
+    "PASSWORD_RESET_DONE": (
+        "success",
+        "If your email exists, a reset link has been sent.",
+    ),
+    "PASSWORD_RESET_COMPLETE": (
+        "success",
+        "Password reset successful. Please sign in.",
+    ),
     "USER_UPDATED": ("success", "User updated successfully."),
     "USER_DELETED": ("success", "User deleted successfully."),
     "USER_UPDATE_FAILED": ("error", "User update failed."),
@@ -117,6 +130,7 @@ AUTH_MESSAGES = {
 
 
 # ── Role helpers ─────────────────────────────────────────────────────────────
+
 
 def normalize_role(role: str | None) -> str:
     selected_role = str(role or AUTH_DEFAULT_ROLE).strip().lower()
@@ -147,11 +161,22 @@ def add_auth_notice(url: str, message_key: str) -> str:
     query_items = dict(parse_qsl(parts.query, keep_blank_values=True))
     query_items["auth_level"] = level
     query_items["auth_message"] = message
-    return urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(query_items), parts.fragment))
+    return urlunsplit(
+        (
+            parts.scheme,
+            parts.netloc,
+            parts.path,
+            urlencode(query_items),
+            parts.fragment,
+        )
+    )
 
 
 def is_django_admin_user(user) -> bool:
-    return bool(getattr(user, "is_staff", False) or getattr(user, "is_superuser", False))
+    return bool(
+        getattr(user, "is_staff", False)
+        or getattr(user, "is_superuser", False)
+    )
 
 
 def _notification_time_label(created_at) -> str:
@@ -172,18 +197,32 @@ def serialize_notification(notification: Notification) -> dict:
 
 
 def notification_queryset(recipient):
-    return Notification.objects.filter(recipient=recipient).exclude(category=NotificationCategoryChoices.MESSAGE).order_by("-created_at")
+    return (
+        Notification.objects.filter(recipient=recipient)
+        .exclude(category=NotificationCategoryChoices.MESSAGE)
+        .order_by("-created_at")
+    )
 
 
 def notification_context(request: HttpRequest, limit: int = 8) -> dict:
     notifications = notification_queryset(request.user)
     return {
-        "notification_items": [serialize_notification(item) for item in notifications[:limit]],
-        "notification_unseen_count": notifications.filter(is_seen=False).count(),
+        "notification_items": [
+            serialize_notification(item) for item in notifications[:limit]
+        ],
+        "notification_unseen_count": notifications.filter(
+            is_seen=False
+        ).count(),
     }
 
 
-def notify_user(recipient, title: str, message: str, category: str = NotificationCategoryChoices.SYSTEM, link_url: str = ""):
+def notify_user(
+    recipient,
+    title: str,
+    message: str,
+    category: str = NotificationCategoryChoices.SYSTEM,
+    link_url: str = "",
+):
     if recipient is None:
         return None
     return Notification.objects.create(
@@ -211,6 +250,7 @@ def notify_admins_of_vendor_registration(vendor) -> None:
 
 
 # ── Context builders ─────────────────────────────────────────────────────────
+
 
 def auth_context(
     request: HttpRequest,
@@ -244,7 +284,11 @@ def auth_context(
             {"value": "admin", "label": ROLE_LABELS["admin"]},
         ],
         "role_labels": ROLE_LABELS,
-        "google_label": "Continue with Google" if mode == "login" else "Sign up with Google",
+        "google_label": (
+            "Continue with Google"
+            if mode == "login"
+            else "Sign up with Google"
+        ),
         "form_values": default_form_values,
     }
 
@@ -272,13 +316,20 @@ def _serialize_booking_request(request_item) -> dict:
         "event_date_label": event.event_date.strftime("%A, %B %d, %Y"),
         "event_has_own_venue": bool(event.has_own_venue),
         "service_name": service.name,
-        "vendor_name": service.vendor.company_name or _display_name(service.vendor),
+        "vendor_name": service.vendor.company_name
+        or _display_name(service.vendor),
         "price": f"{Decimal(str(request_item.price_snapshot or service.price or 0)):.2f}",
         "status": status,
         "status_label": status.title(),
-        "status_badge": "pending" if status == "pending" else "confirmed" if status == "approved" else "rejected",
+        "status_badge": (
+            "pending"
+            if status == "pending"
+            else "confirmed" if status == "approved" else "rejected"
+        ),
         "can_decide": status == "pending",
-        "requested_date_label": request_item.requested_date.strftime("%A, %B %d, %Y"),
+        "requested_date_label": request_item.requested_date.strftime(
+            "%A, %B %d, %Y"
+        ),
         "event_location": event.venue_name or "Venue not set",
     }
 
@@ -322,7 +373,14 @@ def _vendor_event_location(event) -> str:
 
 
 def _vendor_event_owner_field(fields: dict) -> str | None:
-    for field_name in ("vendor", "owner", "organizer", "host", "created_by", "user"):
+    for field_name in (
+        "vendor",
+        "owner",
+        "organizer",
+        "host",
+        "created_by",
+        "user",
+    ):
         if field_name in fields:
             return field_name
     return None
@@ -331,7 +389,11 @@ def _vendor_event_owner_field(fields: dict) -> str | None:
 def _serialize_vendor_event(event, date_field_name: str, date_field) -> dict:
     raw_date = getattr(event, date_field_name)
     if isinstance(date_field, models.DateTimeField):
-        event_dt = timezone.localtime(raw_date) if timezone.is_aware(raw_date) else raw_date
+        event_dt = (
+            timezone.localtime(raw_date)
+            if timezone.is_aware(raw_date)
+            else raw_date
+        )
         event_date = event_dt.date()
         date_label = event_dt.strftime("%A, %B %d, %Y")
         time_label = event_dt.strftime("%I:%M %p").lstrip("0")
@@ -349,7 +411,11 @@ def _serialize_vendor_event(event, date_field_name: str, date_field) -> dict:
         timing_label = f"In {days_until} days"
 
     status_value = getattr(event, "status", None)
-    status_label = str(status_value).replace("_", " ").title() if status_value else "Upcoming"
+    status_label = (
+        str(status_value).replace("_", " ").title()
+        if status_value
+        else "Upcoming"
+    )
 
     return {
         "title": _vendor_event_title(event),
@@ -360,8 +426,6 @@ def _serialize_vendor_event(event, date_field_name: str, date_field) -> dict:
         "status_label": status_label,
         "status_badge": "info-tag",
     }
-
-
 
 
 def vendor_dashboard_data(request: HttpRequest) -> dict:
@@ -393,7 +457,9 @@ def vendor_dashboard_data(request: HttpRequest) -> dict:
                 queryset = queryset.filter(**{owner_field_name: request.user})
             except Exception:
                 try:
-                    queryset = queryset.filter(**{f"{owner_field_name}_id": request.user.pk})
+                    queryset = queryset.filter(
+                        **{f"{owner_field_name}_id": request.user.pk}
+                    )
                 except Exception:
                     queryset = None
 
@@ -419,14 +485,17 @@ def vendor_dashboard_data(request: HttpRequest) -> dict:
                     for event in queryset[:6]
                 ]
 
-
     from events.views import _booking_request_model
 
     booking_requests = []
     booking_model = _booking_request_model()
     if booking_model is not None:
-        queryset = booking_model.objects.select_related("event", "service", "service__vendor").filter(service__vendor=request.user)
-        booking_requests = [_serialize_booking_request(item) for item in queryset[:12]]
+        queryset = booking_model.objects.select_related(
+            "event", "service", "service__vendor"
+        ).filter(service__vendor=request.user)
+        booking_requests = [
+            _serialize_booking_request(item) for item in queryset[:12]
+        ]
 
     upcoming_count = len(upcoming_events)
     return {
@@ -435,7 +504,9 @@ def vendor_dashboard_data(request: HttpRequest) -> dict:
             "services": max(3, upcoming_count + 2),
             "events": upcoming_count,
             "messages": max(2, upcoming_count + 1),
-            "bookings": max(1, upcoming_count - 1 if upcoming_count > 1 else 1),
+            "bookings": max(
+                1, upcoming_count - 1 if upcoming_count > 1 else 1
+            ),
         },
         "upcoming_events": upcoming_events,
         "booking_requests": booking_requests,
@@ -444,18 +515,30 @@ def vendor_dashboard_data(request: HttpRequest) -> dict:
 
 def vendor_base_context(request: HttpRequest, active_menu: str) -> dict:
     user_name = _display_name(request.user)
-    initials = "".join(part[0] for part in user_name.split() if part).upper()[:2] or "VN"
+    initials = (
+        "".join(part[0] for part in user_name.split() if part).upper()[:2]
+        or "VN"
+    )
 
     unread_messages_count = 0
     try:
         from chat.models import Message
-        unread_messages_count = Message.objects.filter(
-            conversation__vendor=request.user, is_read=False
-        ).exclude(sender=request.user).count()
+
+        unread_messages_count = (
+            Message.objects.filter(
+                conversation__vendor=request.user, is_read=False
+            )
+            .exclude(sender=request.user)
+            .count()
+        )
     except Exception:
         pass
 
-    messages_label = f"Messages ({unread_messages_count})" if unread_messages_count > 0 else "Messages"
+    messages_label = (
+        f"Messages ({unread_messages_count})"
+        if unread_messages_count > 0
+        else "Messages"
+    )
 
     nav_links = [
         {
@@ -539,7 +622,10 @@ def _approval_filter_url(filter_key: str, from_date: str, to_date: str) -> str:
 
 def admin_base_context(request: HttpRequest, active_menu: str) -> dict:
     user_name = _display_name(request.user)
-    initials = "".join(part[0] for part in user_name.split() if part).upper()[:2] or "AD"
+    initials = (
+        "".join(part[0] for part in user_name.split() if part).upper()[:2]
+        or "AD"
+    )
 
     nav_links = [
         {
@@ -581,23 +667,37 @@ def _special_day_label(today) -> str:
         (3, 26): "Independence Day",
         (12, 16): "Victory Day",
     }
-    return special_days.get((today.month, today.day), "No special observance today")
+    return special_days.get(
+        (today.month, today.day), "No special observance today"
+    )
 
 
 def client_base_context(request: HttpRequest, active_menu: str) -> dict:
     user_name = _display_name(request.user)
-    initials = "".join(part[0] for part in user_name.split() if part).upper()[:2] or "CL"
+    initials = (
+        "".join(part[0] for part in user_name.split() if part).upper()[:2]
+        or "CL"
+    )
 
     unread_messages_count = 0
     try:
         from chat.models import Message
-        unread_messages_count = Message.objects.filter(
-            conversation__client=request.user, is_read=False
-        ).exclude(sender=request.user).count()
+
+        unread_messages_count = (
+            Message.objects.filter(
+                conversation__client=request.user, is_read=False
+            )
+            .exclude(sender=request.user)
+            .count()
+        )
     except Exception:
         pass
 
-    messages_label = f"Messages ({unread_messages_count})" if unread_messages_count > 0 else "Messages"
+    messages_label = (
+        f"Messages ({unread_messages_count})"
+        if unread_messages_count > 0
+        else "Messages"
+    )
 
     nav_links = [
         {
@@ -640,7 +740,9 @@ def client_base_context(request: HttpRequest, active_menu: str) -> dict:
 def client_dashboard_data(request: HttpRequest) -> dict:
     today = timezone.localdate()
     upcoming_list = []
-    total_events = upcoming_events = ongoing_events = canceled_events = completed_events = 0
+    total_events = upcoming_events = ongoing_events = canceled_events = (
+        completed_events
+    ) = 0
 
     from events.views import _client_event_model
 
@@ -649,7 +751,9 @@ def client_dashboard_data(request: HttpRequest) -> dict:
         queryset = event_model.objects.filter(client=request.user)
         total_events = queryset.count()
         ongoing_events = queryset.filter(event_date=today).count()
-        upcoming_queryset = queryset.filter(event_date__gte=today).order_by("event_date", "created_at")
+        upcoming_queryset = queryset.filter(event_date__gte=today).order_by(
+            "event_date", "created_at"
+        )
         upcoming_events = upcoming_queryset.count()
         completed_events = queryset.filter(event_date__lt=today).count()
 
@@ -661,7 +765,6 @@ def client_dashboard_data(request: HttpRequest) -> dict:
                     "location": event.venue_name or "Venue not set",
                 }
             )
-
 
     return {
         "today_label": today.strftime("%A, %B %d %Y"),
@@ -679,7 +782,9 @@ def client_dashboard_data(request: HttpRequest) -> dict:
 
 def admin_users_data() -> dict:
     user_model = get_user_model()
-    queryset = user_model.objects.filter(is_superuser=False).order_by("-date_joined")
+    queryset = user_model.objects.filter(is_superuser=False).order_by(
+        "-date_joined"
+    )
     total_users = queryset.count()
 
     role_counts = {
@@ -701,7 +806,9 @@ def admin_users_data() -> dict:
                 "phone": user.phone or "Not provided",
                 "address": user.address or "Not provided",
                 "email_verified": user.email_verified,
-                "join_date": timezone.localtime(user.date_joined).strftime("%d %b %Y"),
+                "join_date": timezone.localtime(user.date_joined).strftime(
+                    "%d %b %Y"
+                ),
             }
         )
 
@@ -712,6 +819,8 @@ def admin_users_data() -> dict:
         "vendors": role_counts.get("vendor", 0),
         "admins": role_counts.get("admin", 0),
     }
+
+
 def admin_dashboard_data() -> dict:
     user_data = admin_users_data()
     total_users = user_data["total"]
@@ -719,6 +828,7 @@ def admin_dashboard_data() -> dict:
     admins = user_data["admins"]
 
     from django.apps import apps
+
     Service = apps.get_model("services", "Service")
     Event = apps.get_model("events", "Event")
     today = timezone.localdate()
@@ -753,7 +863,9 @@ def admin_dashboard_data() -> dict:
     }
 
 
-def admin_approvals_data(filter_key: str = "all", from_date: str = "", to_date: str = "") -> dict:
+def admin_approvals_data(
+    filter_key: str = "all", from_date: str = "", to_date: str = ""
+) -> dict:
     normalized_filter = normalize_approval_filter(filter_key)
     start_date = parse_filter_date(from_date)
     end_date = parse_filter_date(to_date)
@@ -768,12 +880,15 @@ def admin_approvals_data(filter_key: str = "all", from_date: str = "", to_date: 
                 "request_type": "vendor",
                 "request_id": vendor.pk,
                 "vendor_name": vendor.company_name or _display_name(vendor),
-                "vendor_approved": vendor.vendor_approval_status == ApprovalStatusChoices.ALLOWED,
+                "vendor_approved": vendor.vendor_approval_status
+                == ApprovalStatusChoices.ALLOWED,
                 "service_name": "N/A",
                 "service_type": "N/A",
                 "status": vendor.vendor_approval_status,
                 "status_label": vendor.get_vendor_approval_status_display(),
-                "status_badge": approval_status_badge(vendor.vendor_approval_status),
+                "status_badge": approval_status_badge(
+                    vendor.vendor_approval_status
+                ),
                 "created_at_dt": timezone.localtime(vendor.date_joined),
             }
         )
@@ -782,16 +897,21 @@ def admin_approvals_data(filter_key: str = "all", from_date: str = "", to_date: 
     try:
         from services.models import ApprovalRequest
 
-        svc_requests = ApprovalRequest.objects.select_related("service", "vendor").all()
+        svc_requests = ApprovalRequest.objects.select_related(
+            "service", "vendor"
+        ).all()
         for req in svc_requests:
             rows.append(
                 {
                     "request_type": "service",
                     "request_id": req.pk,
-                    "vendor_name": req.vendor.company_name or _display_name(req.vendor),
+                    "vendor_name": req.vendor.company_name
+                    or _display_name(req.vendor),
                     "vendor_approved": True,
                     "service_name": getattr(req.service, "name", "N/A"),
-                    "service_type": getattr(req.service, "service_type", "N/A"),
+                    "service_type": getattr(
+                        req.service, "service_type", "N/A"
+                    ),
                     "status": req.status,
                     "status_label": req.get_status_display(),
                     "status_badge": approval_status_badge(req.status),
@@ -811,13 +931,22 @@ def admin_approvals_data(filter_key: str = "all", from_date: str = "", to_date: 
         if end_date and created_date > end_date:
             continue
 
-        if normalized_filter == "allowed" and row["status"] != ApprovalStatusChoices.ALLOWED:
+        if (
+            normalized_filter == "allowed"
+            and row["status"] != ApprovalStatusChoices.ALLOWED
+        ):
             continue
-        if normalized_filter == "rejected" and row["status"] != ApprovalStatusChoices.REJECTED:
+        if (
+            normalized_filter == "rejected"
+            and row["status"] != ApprovalStatusChoices.REJECTED
+        ):
             continue
         if normalized_filter == "vendors" and row["request_type"] != "vendor":
             continue
-        if normalized_filter == "services" and row["request_type"] != "service":
+        if (
+            normalized_filter == "services"
+            and row["request_type"] != "service"
+        ):
             continue
 
         row["created_at"] = row["created_at_dt"].strftime("%d %b %Y, %I:%M %p")
@@ -877,8 +1006,11 @@ def admin_activity_logs_data(page_number: int = 1, per_page: int = 12) -> dict:
 
 # ── Feature flags ────────────────────────────────────────────────────────────
 
+
 def google_oauth_configured() -> bool:
-    return bool(settings.GOOGLE_OAUTH_CLIENT_ID and settings.GOOGLE_OAUTH_CLIENT_SECRET)
+    return bool(
+        settings.GOOGLE_OAUTH_CLIENT_ID and settings.GOOGLE_OAUTH_CLIENT_SECRET
+    )
 
 
 def verification_required() -> bool:
@@ -887,28 +1019,35 @@ def verification_required() -> bool:
 
 # ── Email helpers ────────────────────────────────────────────────────────────
 
+
 def _email_brand_context() -> dict:
     return {
         "brand_name": getattr(settings, "EMAIL_BRAND_NAME", "Eventify"),
         "brand_primary": getattr(settings, "EMAIL_BRAND_PRIMARY", "#f97316"),
-        "brand_secondary": getattr(settings, "EMAIL_BRAND_SECONDARY", "#10b981"),
+        "brand_secondary": getattr(
+            settings, "EMAIL_BRAND_SECONDARY", "#10b981"
+        ),
         "brand_bg": getattr(settings, "EMAIL_BRAND_BG", "#fff7ed"),
         "brand_card": getattr(settings, "EMAIL_BRAND_CARD", "#ffffff"),
         "brand_text": getattr(settings, "EMAIL_BRAND_TEXT", "#1f2937"),
         "brand_muted": getattr(settings, "EMAIL_BRAND_MUTED", "#6b7280"),
     }
 
+
 def _do_send_verification_email(user, verify_url: str) -> None:
     """Send verification email and raise/log on failures."""
     brand_context = _email_brand_context()
     brand_name = brand_context["brand_name"]
-    html_body = render_to_string("emails/verification_email.html", {
-        "user": user,
-        "verify_url": verify_url,
-        "heading": "Verify your email address",
-        "message": "Click the button below to confirm your account and finish setting up Eventify.",
-        **brand_context,
-    })
+    html_body = render_to_string(
+        "emails/verification_email.html",
+        {
+            "user": user,
+            "verify_url": verify_url,
+            "heading": "Verify your email address",
+            "message": "Click the button below to confirm your account and finish setting up Eventify.",
+            **brand_context,
+        },
+    )
     plain_body = (
         f"Welcome to {brand_name}!\n\n"
         "Please verify your email by clicking the link below:\n"
@@ -929,19 +1068,25 @@ def send_verification_email(request: HttpRequest, user) -> None:
     """Build verification URL and send after successful DB commit."""
     uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
     token = default_token_generator.make_token(user)
-    verify_url = request.build_absolute_uri(reverse("users:verify_email", args=[uidb64, token]))
+    verify_url = request.build_absolute_uri(
+        reverse("users:verify_email", args=[uidb64, token])
+    )
 
     def _send() -> None:
         try:
             _do_send_verification_email(user, verify_url)
         except Exception:
-            logger.exception("Failed to send verification email to %s", user.email)
+            logger.exception(
+                "Failed to send verification email to %s", user.email
+            )
             raise
 
     transaction.on_commit(_send)
 
 
-def create_user_from_registration(cleaned_data: dict, require_verification: bool):
+def create_user_from_registration(
+    cleaned_data: dict, require_verification: bool
+):
     role = normalize_role(cleaned_data["role"])
     extra_fields = {
         "first_name": "",
@@ -954,10 +1099,12 @@ def create_user_from_registration(cleaned_data: dict, require_verification: bool
     }
 
     if role == "client":
-        extra_fields.update({
-            "first_name": cleaned_data["first_name"],
-            "last_name": cleaned_data["last_name"],
-        })
+        extra_fields.update(
+            {
+                "first_name": cleaned_data["first_name"],
+                "last_name": cleaned_data["last_name"],
+            }
+        )
     elif role == "vendor":
         extra_fields.update(
             {
@@ -966,11 +1113,13 @@ def create_user_from_registration(cleaned_data: dict, require_verification: bool
             }
         )
     elif role == "admin":
-        extra_fields.update({
-            "first_name": cleaned_data["first_name"],
-            "last_name": cleaned_data["last_name"],
-            "referral_code": ADMIN_REFERRAL_CODE,
-        })
+        extra_fields.update(
+            {
+                "first_name": cleaned_data["first_name"],
+                "last_name": cleaned_data["last_name"],
+                "referral_code": ADMIN_REFERRAL_CODE,
+            }
+        )
 
     user_model = getattr(settings, "AUTH_USER_MODEL", "users.EventUser")
     from django.apps import apps
@@ -991,9 +1140,14 @@ def create_user_from_registration(cleaned_data: dict, require_verification: bool
 
 # ── Google OAuth helpers ─────────────────────────────────────────────────────
 
+
 def build_google_auth_url(request: HttpRequest, role: str, mode: str) -> str:
-    state = signing.dumps({"role": role, "mode": mode}, salt="users.google.oauth")
-    redirect_uri = request.build_absolute_uri(reverse("users:google_oauth_callback"))
+    state = signing.dumps(
+        {"role": role, "mode": mode}, salt="users.google.oauth"
+    )
+    redirect_uri = request.build_absolute_uri(
+        reverse("users:google_oauth_callback")
+    )
     query = urlencode(
         {
             "client_id": settings.GOOGLE_OAUTH_CLIENT_ID,
@@ -1008,7 +1162,9 @@ def build_google_auth_url(request: HttpRequest, role: str, mode: str) -> str:
 
 
 def exchange_google_code_for_token(request: HttpRequest, code: str) -> dict:
-    redirect_uri = request.build_absolute_uri(reverse("users:google_oauth_callback"))
+    redirect_uri = request.build_absolute_uri(
+        reverse("users:google_oauth_callback")
+    )
     response = requests.post(
         GOOGLE_TOKEN_URL,
         data={
