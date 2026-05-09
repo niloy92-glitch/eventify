@@ -35,18 +35,29 @@
             <td>BDT {{ request_item.price }}</td>
             <td><span class="badge {{ request_item.status_badge }}">{{ request_item.status_label }}</span></td>
             <td class="actions-cell">
-              <form method="post" action="{% url 'services:vendor_booking_request_update' %}">
-                {% csrf_token %}
-                <input type="hidden" name="request_id" value="{{ request_item.id }}" />
-                <input type="hidden" name="decision" value="approve" />
-                <button type="submit" class="btn" {% if not request_item.can_decide %}disabled aria-disabled="true"{% endif %}>Accept</button>
-              </form>
-              <form method="post" action="{% url 'services:vendor_booking_request_update' %}">
-                {% csrf_token %}
-                <input type="hidden" name="request_id" value="{{ request_item.id }}" />
-                <input type="hidden" name="decision" value="reject" />
-                <button type="submit" class="btn danger-btn" {% if not request_item.can_decide %}disabled aria-disabled="true"{% endif %}>Reject</button>
-              </form>
+              {% if request_item.can_quote %}
+                <form method="post" action="{% url 'services:vendor_booking_request_update' %}" class="booking-quote-form">
+                  {% csrf_token %}
+                  <input type="hidden" name="request_id" value="{{ request_item.id }}" />
+                  <input type="hidden" name="decision" value="quote" />
+                  <input type="number" name="quote_price" class="form-field-input booking-quote-input" step="0.01" min="0" value="{{ request_item.price }}" placeholder="Quote price" />
+                  <button type="submit" class="btn">Send Quote</button>
+                </form>
+                <form method="post" action="{% url 'services:vendor_booking_request_update' %}">
+                  {% csrf_token %}
+                  <input type="hidden" name="request_id" value="{{ request_item.id }}" />
+                  <input type="hidden" name="decision" value="approve" />
+                  <button type="submit" class="btn" {% if not request_item.can_decide %}disabled aria-disabled="true"{% endif %}>Accept</button>
+                </form>
+                <form method="post" action="{% url 'services:vendor_booking_request_update' %}">
+                  {% csrf_token %}
+                  <input type="hidden" name="request_id" value="{{ request_item.id }}" />
+                  <input type="hidden" name="decision" value="reject" />
+                  <button type="submit" class="btn danger-btn" {% if not request_item.can_decide %}disabled aria-disabled="true"{% endif %}>Reject</button>
+                </form>
+              {% else %}
+                <span class="muted">Awaiting client response</span>
+              {% endif %}
             </td>
           </tr>
         {% empty %}

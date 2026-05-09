@@ -863,8 +863,17 @@ input[type="date"]:focus,
 .auth-row-utility { margin-bottom: 16px; }
 .remember-no-margin { margin-bottom: 0; }
 
-.password-toggle-wrap { position: relative; }
-.password-toggle-wrap input { padding-right: 52px; }
+.password-toggle-wrap { 
+  position: relative; 
+}
+
+.password-toggle-wrap input { 
+  padding-right: 52px; 
+}
+
+.password-toggle-wrap .input { 
+  padding-right: 52px; 
+}
 
 .password-toggle-btn {
   position: absolute;
@@ -1707,6 +1716,46 @@ body[data-require-role] .sidebar-notification-text {
   border: 1px solid transparent;
   cursor: pointer;
   transition: background .16s ease, border-color .16s ease;
+}
+
+/* ─────────────────────────────────────────
+   FORM HELP & ALERTS
+───────────────────────────────────────── */
+.form-help {
+  color: var(--text-3);
+  font-size: 12px;
+  font-weight: 400;
+  margin-top: 4px;
+}
+
+.alert {
+  padding: 16px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--line);
+  margin-bottom: 16px;
+}
+
+.alert h2 {
+  font-size: 1.1rem;
+  margin-bottom: 8px;
+  font-family: var(--font-display);
+}
+
+.alert p {
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: var(--text-2);
+}
+
+.alert-error {
+  background: var(--red-soft);
+  border-color: #fca5a5;
+  color: var(--red);
+}
+
+.alert-error h2,
+.alert-error p {
+  color: var(--red);
 }
 
 .chat-item:hover {

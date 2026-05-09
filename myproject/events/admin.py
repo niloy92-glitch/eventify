@@ -30,6 +30,7 @@ class EventServiceBookingAdmin(admin.ModelAdmin):
         "service",
         "vendor",
         "status",
+        "quoted_price",
         "requested_date",
         "created_at",
     )

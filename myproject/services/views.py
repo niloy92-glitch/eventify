@@ -1,4 +1,5 @@
 from datetime import timedelta
+from decimal import Decimal, InvalidOperation
 
 from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse
@@ -73,6 +74,8 @@ def _serialize_upcoming_event(event: Event) -> dict:
 def _booking_status_badge(status: str) -> str:
     if status == "approved":
         return "confirmed"
+    if status == "quoted":
+        return "info-tag"
     if status == "rejected":
         return "rejected"
     return "pending"
@@ -270,6 +273,9 @@ def book_service_request(request: HttpRequest) -> HttpResponse:
             "vendor": service.vendor,
             "requested_date": event.event_date,
             "price_snapshot": service.price,
+            "quoted_price": None,
+            "quote_note": "",
+            "quoted_at": None,
             "status": "pending",
         },
     )
@@ -277,12 +283,18 @@ def book_service_request(request: HttpRequest) -> HttpResponse:
         booking.vendor = service.vendor
         booking.requested_date = event.event_date
         booking.price_snapshot = service.price
+        booking.quoted_price = None
+        booking.quote_note = ""
+        booking.quoted_at = None
         booking.status = "pending"
         booking.save(
             update_fields=[
                 "vendor",
                 "requested_date",
                 "price_snapshot",
+                "quoted_price",
+                "quote_note",
+                "quoted_at",
                 "status",
                 "updated_at",
             ]
@@ -326,7 +338,9 @@ def vendor_booking_request_update(request: HttpRequest) -> HttpResponse:
 
     request_id = str(request.POST.get("request_id", "")).strip()
     decision = str(request.POST.get("decision", "")).strip().lower()
-    if not request_id.isdigit() or decision not in {"approve", "reject"}:
+    quote_price_value = str(request.POST.get("quote_price", "")).strip()
+    quote_note = str(request.POST.get("quote_note", "")).strip()
+    if not request_id.isdigit() or decision not in {"approve", "reject", "quote"}:
         return redirect(
             add_auth_notice(
                 reverse("users:vendor_dashboard"),
@@ -339,6 +353,62 @@ def vendor_booking_request_update(request: HttpRequest) -> HttpResponse:
         pk=int(request_id),
         service__vendor=request.user,
     )
+
+    if decision == "quote":
+        try:
+            quoted_price = Decimal(quote_price_value)
+        except (InvalidOperation, TypeError):
+            quoted_price = None
+        if quoted_price is None or quoted_price <= 0:
+            return redirect(
+                add_auth_notice(
+                    reverse("users:vendor_dashboard"),
+                    AUTH_MESSAGE_KEYS["quote_update_failed"],
+                )
+            )
+
+        booking.status = "quoted"
+        booking.quoted_price = quoted_price
+        booking.quote_note = quote_note[:1000]
+        booking.quoted_at = timezone.now()
+        booking.save(
+            update_fields=[
+                "status",
+                "quoted_price",
+                "quote_note",
+                "quoted_at",
+                "updated_at",
+            ]
+        )
+        notify_user(
+            booking.event.client,
+            "Quote received",
+            f"{request.user.get_full_name()} sent a quote of BDT {quoted_price:.2f} for '{booking.service.name}'.",
+            category="request",
+            link_url=reverse(
+                "events:client_event_detail",
+                kwargs={"event_id": booking.event.pk},
+            ),
+        )
+
+        from chat.models import Conversation, Message
+
+        conv, _ = Conversation.objects.get_or_create(
+            client=booking.event.client, vendor=booking.service.vendor
+        )
+        Message.objects.create(
+            conversation=conv,
+            is_system=True,
+            content=f"System: Vendor sent a quote of BDT {quoted_price:.2f} for '{booking.service.name}' on '{booking.event.title}'.",
+        )
+
+        return redirect(
+            add_auth_notice(
+                reverse("users:vendor_dashboard"),
+                AUTH_MESSAGE_KEYS["quote_sent"],
+            )
+        )
+
     booking.status = "approved" if decision == "approve" else "rejected"
     booking.responded_at = timezone.now()
     booking.save(update_fields=["status", "responded_at", "updated_at"])

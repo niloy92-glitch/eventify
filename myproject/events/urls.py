@@ -34,6 +34,11 @@ urlpatterns = [
         views.client_event_delete_view,
         name="client_event_delete",
     ),
+    path(
+        "client/bookings/<int:booking_id>/quote-response/",
+        views.client_booking_quote_response_view,
+        name="client_booking_quote_response",
+    ),
     path("vendor/events/", views.vendor_events_view, name="vendor_events"),
     path(
         "vendor/booking-requests/",
