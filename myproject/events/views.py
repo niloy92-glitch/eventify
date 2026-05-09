@@ -81,11 +81,11 @@ def _serialize_client_event(event) -> dict:
     if bookings is not None:
         bookings = bookings.select_related("service", "service__vendor").all()
         for booking in bookings:
-            price_value = (
-                booking.price_snapshot
-                if booking.price_snapshot is not None
-                else getattr(booking.service, "price", None)
-            )
+            price_value = booking.price_snapshot
+            if booking.status == "quoted" and booking.quoted_price is not None:
+                price_value = booking.quoted_price
+            if price_value is None:
+                price_value = getattr(booking.service, "price", None)
             if price_value is not None:
                 total_cost += Decimal(str(price_value))
             service_rows.append(
@@ -95,16 +95,27 @@ def _serialize_client_event(event) -> dict:
                     "vendor_name": booking.vendor.company_name
                     or _display_name(booking.vendor),
                     "status": booking.status,
-                    "status_label": booking.status.title(),
+                    "status_label": (
+                        "Quoted" if booking.status == "quoted" else booking.status.title()
+                    ),
                     "status_badge": (
                         "pending"
                         if booking.status == "pending"
+                        else "info-tag"
+                        if booking.status == "quoted"
                         else (
                             "confirmed"
                             if booking.status == "approved"
                             else "rejected"
                         )
                     ),
+                    "quote_note": booking.quote_note or "",
+                    "quoted_price": (
+                        f"{Decimal(str(booking.quoted_price)):.2f}"
+                        if booking.quoted_price is not None
+                        else ""
+                    ),
+                    "can_respond": booking.status == "quoted",
                     "price": f"{Decimal(str(price_value or 0)):.2f}",
                 }
             )
@@ -213,6 +224,93 @@ def client_event_detail_view(
         }
     )
     return render(request, "users/client/event_detail.html", context)
+
+
+@login_required(login_url="users:login")
+@require_POST
+def client_booking_quote_response_view(
+    request: HttpRequest, booking_id: int
+) -> HttpResponse:
+    redirect_response = _client_access_redirect(request)
+    if redirect_response is not None:
+        return redirect_response
+
+    decision = str(request.POST.get("decision", "")).strip().lower()
+    if decision not in {"accept", "reject"}:
+        return redirect(
+            add_auth_notice(
+                reverse("events:client_my_events"),
+                AUTH_MESSAGE_KEYS["quote_update_failed"],
+            )
+        )
+
+    booking = get_object_or_404(
+        EventServiceBooking.objects.select_related("event", "service"),
+        pk=booking_id,
+        event__client=request.user,
+        status="quoted",
+    )
+
+    if decision == "accept":
+        booking.status = "approved"
+        booking.price_snapshot = (
+            booking.quoted_price
+            if booking.quoted_price is not None
+            else booking.price_snapshot
+        )
+        booking.responded_at = timezone.now()
+        booking.save(
+            update_fields=[
+                "status",
+                "price_snapshot",
+                "responded_at",
+                "updated_at",
+            ]
+        )
+        notify_user(
+            booking.service.vendor,
+            "Quote accepted",
+            f"Your quote for '{booking.service.name}' was accepted.",
+            category="approval",
+            link_url=reverse("events:vendor_booking_requests"),
+        )
+        message_key = "quote_accepted"
+        system_message = (
+            f"System: Client accepted the quote for '{booking.service.name}' on '{booking.event.title}'."
+        )
+    else:
+        booking.status = "rejected"
+        booking.responded_at = timezone.now()
+        booking.save(update_fields=["status", "responded_at", "updated_at"])
+        notify_user(
+            booking.service.vendor,
+            "Quote rejected",
+            f"Your quote for '{booking.service.name}' was rejected.",
+            category="request",
+            link_url=reverse("events:vendor_booking_requests"),
+        )
+        message_key = "quote_rejected"
+        system_message = (
+            f"System: Client rejected the quote for '{booking.service.name}' on '{booking.event.title}'."
+        )
+
+    from chat.models import Conversation, Message
+
+    conv, _ = Conversation.objects.get_or_create(
+        client=booking.event.client, vendor=booking.service.vendor
+    )
+    Message.objects.create(
+        conversation=conv,
+        is_system=True,
+        content=system_message,
+    )
+
+    return redirect(
+        add_auth_notice(
+            reverse("events:client_event_detail", kwargs={"event_id": booking.event.pk}),
+            AUTH_MESSAGE_KEYS[message_key],
+        )
+    )
 
 
 @login_required(login_url="users:login")

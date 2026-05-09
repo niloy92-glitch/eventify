@@ -35,13 +35,13 @@
         <div class="auth-brand-bottom">
           <div class="auth-brand-metrics">
             <div class="auth-metric">
-              <strong>1,240</strong><span>Clients</span>
+              <strong>{{ site_clients_count|default:'—' }}</strong><span>Clients</span>
             </div>
             <div class="auth-metric">
-              <strong>310</strong><span>Vendors</span>
+              <strong>{{ site_vendors_count|default:'—' }}</strong><span>Vendors</span>
             </div>
             <div class="auth-metric">
-              <strong>890</strong><span>Events</span>
+              <strong>{{ site_events_count|default:'—' }}</strong><span>Events</span>
             </div>
           </div>
         </div>

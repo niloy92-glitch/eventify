@@ -92,6 +92,10 @@ AUTH_MESSAGE_KEYS = {
     "booking_requested": "BOOKING_REQUESTED",
     "booking_updated": "BOOKING_UPDATED",
     "booking_update_failed": "BOOKING_UPDATE_FAILED",
+    "quote_sent": "QUOTE_SENT",
+    "quote_accepted": "QUOTE_ACCEPTED",
+    "quote_rejected": "QUOTE_REJECTED",
+    "quote_update_failed": "QUOTE_UPDATE_FAILED",
 }
 
 AUTH_MESSAGES = {
@@ -126,6 +130,10 @@ AUTH_MESSAGES = {
     "BOOKING_REQUESTED": ("success", "Service booking request sent."),
     "BOOKING_UPDATED": ("success", "Booking request updated successfully."),
     "BOOKING_UPDATE_FAILED": ("error", "Booking request update failed."),
+    "QUOTE_SENT": ("success", "Quote sent successfully."),
+    "QUOTE_ACCEPTED": ("success", "Quote accepted successfully."),
+    "QUOTE_REJECTED": ("success", "Quote rejected successfully."),
+    "QUOTE_UPDATE_FAILED": ("error", "Quote update failed."),
 }
 
 
@@ -275,6 +283,20 @@ def auth_context(
     if form_values:
         default_form_values.update(form_values)
 
+    # site-level counts for marketing/intro tiles on auth page
+    try:
+        user_model = get_user_model()
+        site_clients_count = user_model.objects.filter(role="client", is_active=True).count()
+        site_vendors_count = user_model.objects.filter(role="vendor", is_active=True).count()
+    except Exception:
+        site_clients_count = site_vendors_count = 0
+
+    try:
+        Event = apps.get_model("events", "Event")
+        site_events_count = Event.objects.count()
+    except Exception:
+        site_events_count = 0
+
     return {
         "mode": mode,
         "active_role": selected_role,
@@ -290,7 +312,11 @@ def auth_context(
             else "Sign up with Google"
         ),
         "form_values": default_form_values,
+        "site_clients_count": site_clients_count,
+        "site_vendors_count": site_vendors_count,
+        "site_events_count": site_events_count,
     }
+
 
 
 def dashboard_context(request: HttpRequest, role: str) -> dict:
@@ -309,6 +335,9 @@ def _serialize_booking_request(request_item) -> dict:
     event = request_item.event
     service = request_item.service
     status = str(request_item.status or "pending")
+    quoted_price_value = request_item.quoted_price
+    if quoted_price_value is None:
+        quoted_price_value = request_item.price_snapshot or service.price or 0
     return {
         "id": request_item.pk,
         "event_id": event.pk,
@@ -318,15 +347,28 @@ def _serialize_booking_request(request_item) -> dict:
         "service_name": service.name,
         "vendor_name": service.vendor.company_name
         or _display_name(service.vendor),
-        "price": f"{Decimal(str(request_item.price_snapshot or service.price or 0)):.2f}",
+        "price": f"{Decimal(str(quoted_price_value)):.2f}",
+        "quote_price": (
+            f"{Decimal(str(request_item.quoted_price)):.2f}"
+            if request_item.quoted_price is not None
+            else ""
+        ),
+        "quote_note": request_item.quote_note or "",
         "status": status,
         "status_label": status.title(),
         "status_badge": (
             "pending"
             if status == "pending"
-            else "confirmed" if status == "approved" else "rejected"
+            else (
+                "info-tag"
+                if status == "quoted"
+                else "confirmed"
+                if status == "approved"
+                else "rejected"
+            )
         ),
         "can_decide": status == "pending",
+        "can_quote": status == "pending",
         "requested_date_label": request_item.requested_date.strftime(
             "%A, %B %d, %Y"
         ),
@@ -497,20 +539,45 @@ def vendor_dashboard_data(request: HttpRequest) -> dict:
             _serialize_booking_request(item) for item in queryset[:12]
         ]
 
-    upcoming_count = len(upcoming_events)
-    return {
-        "today_label": today.strftime("%A, %B %d, %Y"),
-        "stats": {
-            "services": max(3, upcoming_count + 2),
-            "events": upcoming_count,
-            "messages": max(2, upcoming_count + 1),
-            "bookings": max(
-                1, upcoming_count - 1 if upcoming_count > 1 else 1
-            ),
-        },
-        "upcoming_events": upcoming_events,
-        "booking_requests": booking_requests,
-    }
+        upcoming_count = len(upcoming_events)
+
+        # compute real counts for dashboard stats
+        try:
+            from services.models import Service
+
+            services_count = Service.objects.filter(vendor=request.user).count()
+        except Exception:
+            services_count = 0
+
+        try:
+            from chat.models import Message
+
+            messages_count = Message.objects.filter(
+                conversation__vendor=request.user
+            ).exclude(sender=request.user).count()
+        except Exception:
+            messages_count = 0
+
+        try:
+            booking_total_count = (
+                booking_model.objects.filter(service__vendor=request.user).count()
+                if booking_model is not None
+                else 0
+            )
+        except Exception:
+            booking_total_count = 0
+
+        return {
+            "today_label": today.strftime("%A, %B %d, %Y"),
+            "stats": {
+                "services": services_count,
+                "events": upcoming_count,
+                "messages": messages_count,
+                "bookings": booking_total_count,
+            },
+            "upcoming_events": upcoming_events,
+            "booking_requests": booking_requests,
+        }
 
 
 def vendor_base_context(request: HttpRequest, active_menu: str) -> dict:

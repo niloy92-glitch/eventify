@@ -44,10 +44,27 @@
               <div>
                 <strong>{{ service.service_name }}</strong>
                 <p class="muted">{{ service.vendor_name }}</p>
+                {% if service.status == 'quoted' and service.quote_note %}
+                  <p class="muted">Quote note: {{ service.quote_note }}</p>
+                {% endif %}
               </div>
               <div class="event-service-meta">
                 <span class="badge {{ service.status_badge }}">{{ service.status_label }}</span>
                 <strong>BDT {{ service.price }}</strong>
+                {% if service.can_respond %}
+                  <div class="event-service-actions">
+                    <form method="post" action="{% url 'events:client_booking_quote_response' service.id %}">
+                      {% csrf_token %}
+                      <input type="hidden" name="decision" value="accept" />
+                      <button type="submit" class="btn btn-primary">Accept Quote</button>
+                    </form>
+                    <form method="post" action="{% url 'events:client_booking_quote_response' service.id %}">
+                      {% csrf_token %}
+                      <input type="hidden" name="decision" value="reject" />
+                      <button type="submit" class="btn danger-btn">Reject</button>
+                    </form>
+                  </div>
+                {% endif %}
               </div>
             </div>
           {% endfor %}

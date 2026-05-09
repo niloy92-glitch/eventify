@@ -137,6 +137,19 @@
 	gap: 8px;
 }
 
+.booking-quote-form {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	align-items: center;
+	margin-bottom: 8px;
+}
+
+.booking-quote-input {
+	min-width: 130px;
+	max-width: 150px;
+}
+
 .service-pending {
 	margin-top: 8px;
 	color: #b45309;
