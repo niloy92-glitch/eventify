@@ -14,7 +14,7 @@ from django.utils.http import urlsafe_base64_decode
 from django.views.decorators.http import require_GET, require_POST
 
 from users.forms import AdminUserForm, LoginForm, RegisterForm
-from users.models import ApprovalStatusChoices, Notification
+from users.models import ApprovalStatusChoices
 from users.services import (
     AUTH_DEFAULT_ROLE,
     AUTH_MESSAGE_KEYS,
@@ -48,6 +48,7 @@ from users.services import (
     verification_required,
 )
 from events.forms import EventForm
+from services.models import ApprovalRequest
 
 
 User = get_user_model()
@@ -94,7 +95,9 @@ def _admin_access_redirect(request: HttpRequest):
     if is_django_admin_user(request.user):
         return redirect(DJANGO_ADMIN_URL)
     if normalize_role(getattr(request.user, "role", AUTH_DEFAULT_ROLE)) != "admin":
-        return redirect(login_redirect_url(getattr(request.user, "role", AUTH_DEFAULT_ROLE)))
+        return redirect(
+            login_redirect_url(getattr(request.user, "role", AUTH_DEFAULT_ROLE))
+        )
     return None
 
 
@@ -102,11 +105,14 @@ def _vendor_access_redirect(request: HttpRequest):
     if is_django_admin_user(request.user):
         return redirect(DJANGO_ADMIN_URL)
     if normalize_role(getattr(request.user, "role", AUTH_DEFAULT_ROLE)) != "vendor":
-        return redirect(login_redirect_url(getattr(request.user, "role", AUTH_DEFAULT_ROLE)))
+        return redirect(
+            login_redirect_url(getattr(request.user, "role", AUTH_DEFAULT_ROLE))
+        )
     return None
 
 
 # ── Page views ───────────────────────────────────────────────────────────────
+
 
 @require_GET
 def root_redirect(request: HttpRequest) -> HttpResponse:
@@ -117,9 +123,15 @@ def login_page(request: HttpRequest) -> HttpResponse:
     if request.user.is_authenticated:
         if is_django_admin_user(request.user):
             return redirect(DJANGO_ADMIN_URL)
-        return redirect(login_redirect_url(getattr(request.user, "role", AUTH_DEFAULT_ROLE)))
+        return redirect(
+            login_redirect_url(getattr(request.user, "role", AUTH_DEFAULT_ROLE))
+        )
 
-    active_role = normalize_role(request.POST.get("role") if request.method == "POST" else request.GET.get("role"))
+    active_role = normalize_role(
+        request.POST.get("role")
+        if request.method == "POST"
+        else request.GET.get("role")
+    )
     if request.method == "GET":
         context = auth_context(request, "login", active_role=active_role)
         notice_message = str(request.GET.get("auth_message", "")).strip()
@@ -127,11 +139,14 @@ def login_page(request: HttpRequest) -> HttpResponse:
             context.update(
                 {
                     "status_message": notice_message,
-                    "status_level": str(request.GET.get("auth_level", "info")).strip() or "info",
+                    "status_level": str(request.GET.get("auth_level", "info")).strip()
+                    or "info",
                 }
             )
             if notice_message == VERIFICATION_REQUIRED_MESSAGE:
-                resend_url = _resend_verification_url(request.GET.get("email", ""), active_role)
+                resend_url = _resend_verification_url(
+                    request.GET.get("email", ""), active_role
+                )
                 if resend_url:
                     context["resend_verification_url"] = resend_url
         return render(request, "auth.html", context)
@@ -144,7 +159,12 @@ def login_page(request: HttpRequest) -> HttpResponse:
             active_role=active_role,
             form_values=_auth_form_values_from_post(request.POST),
         )
-        context.update({"status_message": _first_form_error(form), "status_level": "error"})
+        context.update(
+            {
+                "status_message": _first_form_error(form),
+                "status_level": "error",
+            }
+        )
         return render(request, "auth.html", context, status=400)
 
     email = form.cleaned_data["email"]
@@ -170,7 +190,9 @@ def login_page(request: HttpRequest) -> HttpResponse:
             active_role=role,
             form_values=_auth_form_values_from_post(request.POST),
         )
-        context.update({"status_message": "Invalid credentials.", "status_level": "error"})
+        context.update(
+            {"status_message": "Invalid credentials.", "status_level": "error"}
+        )
         return render(request, "auth.html", context, status=401)
     if is_django_admin_user(user):
         context = auth_context(
@@ -179,7 +201,12 @@ def login_page(request: HttpRequest) -> HttpResponse:
             active_role=role,
             form_values=_auth_form_values_from_post(request.POST),
         )
-        context.update({"status_message": "Use Django admin for this account.", "status_level": "error"})
+        context.update(
+            {
+                "status_message": "Use Django admin for this account.",
+                "status_level": "error",
+            }
+        )
         return render(request, "auth.html", context, status=403)
     if user.role != role:
         context = auth_context(
@@ -217,11 +244,21 @@ def register_page(request: HttpRequest) -> HttpResponse:
     if request.user.is_authenticated:
         if is_django_admin_user(request.user):
             return redirect(DJANGO_ADMIN_URL)
-        return redirect(login_redirect_url(getattr(request.user, "role", AUTH_DEFAULT_ROLE)))
+        return redirect(
+            login_redirect_url(getattr(request.user, "role", AUTH_DEFAULT_ROLE))
+        )
 
-    active_role = normalize_role(request.POST.get("role") if request.method == "POST" else request.GET.get("role"))
+    active_role = normalize_role(
+        request.POST.get("role")
+        if request.method == "POST"
+        else request.GET.get("role")
+    )
     if request.method == "GET":
-        return render(request, "auth.html", auth_context(request, "register", active_role=active_role))
+        return render(
+            request,
+            "auth.html",
+            auth_context(request, "register", active_role=active_role),
+        )
 
     form = RegisterForm.from_post_data(request.POST, active_role)
     if not form.is_valid():
@@ -254,17 +291,22 @@ def register_page(request: HttpRequest) -> HttpResponse:
 
 # ── Email verification ───────────────────────────────────────────────────────
 
+
 @require_GET
 def verify_email(request: HttpRequest, uidb64: str, token: str) -> HttpResponse:
     try:
         user_id = force_str(urlsafe_base64_decode(uidb64))
         user = User.objects.get(pk=user_id)
     except (TypeError, ValueError, OverflowError, User.DoesNotExist):
-        return render(request, "verification_result.html", {
-            "success": False,
-            "heading": "Verification Failed",
-            "message": "This verification link is invalid or has expired.",
-        })
+        return render(
+            request,
+            "verification_result.html",
+            {
+                "success": False,
+                "heading": "Verification Failed",
+                "message": "This verification link is invalid or has expired.",
+            },
+        )
 
     if default_token_generator.check_token(user, token):
         if not user.email_verified:
@@ -277,21 +319,29 @@ def verify_email(request: HttpRequest, uidb64: str, token: str) -> HttpResponse:
                 category="verification",
                 link_url=role_dashboard_url(user.role),
             )
-        return render(request, "verification_result.html", {
-            "success": True,
-            "heading": "Email Verified!",
-            "message": "Your email has been successfully verified. Redirecting to login…",
-            "redirect_url": add_auth_notice(
-                f"{reverse('users:login')}?role={user.role}",
-                AUTH_MESSAGE_KEYS["email_verified"],
-            ),
-        })
+        return render(
+            request,
+            "verification_result.html",
+            {
+                "success": True,
+                "heading": "Email Verified!",
+                "message": "Your email has been successfully verified. Redirecting to login…",
+                "redirect_url": add_auth_notice(
+                    f"{reverse('users:login')}?role={user.role}",
+                    AUTH_MESSAGE_KEYS["email_verified"],
+                ),
+            },
+        )
 
-    return render(request, "verification_result.html", {
-        "success": False,
-        "heading": "Verification Failed",
-        "message": "This verification link is invalid or has expired.",
-    })
+    return render(
+        request,
+        "verification_result.html",
+        {
+            "success": False,
+            "heading": "Verification Failed",
+            "message": "This verification link is invalid or has expired.",
+        },
+    )
 
 
 @require_GET
@@ -317,13 +367,16 @@ def resend_verification_email_view(request: HttpRequest) -> HttpResponse:
 
 # ── Google OAuth ─────────────────────────────────────────────────────────────
 
+
 @require_GET
 def google_oauth_start(request: HttpRequest) -> HttpResponse:
     if not google_oauth_configured():
-        return redirect(add_auth_notice(
-            f"{reverse('users:login')}?role={normalize_role(request.GET.get('role'))}",
-            AUTH_MESSAGE_KEYS["oauth_failed"],
-        ))
+        return redirect(
+            add_auth_notice(
+                f"{reverse('users:login')}?role={normalize_role(request.GET.get('role'))}",
+                AUTH_MESSAGE_KEYS["oauth_failed"],
+            )
+        )
 
     role = normalize_role(request.GET.get("role"))
     mode = str(request.GET.get("mode", "login")).strip().lower()
@@ -336,19 +389,25 @@ def google_oauth_start(request: HttpRequest) -> HttpResponse:
 @require_GET
 def google_oauth_callback(request: HttpRequest) -> HttpResponse:
     if not google_oauth_configured():
-        return redirect(add_auth_notice(reverse("users:login"), AUTH_MESSAGE_KEYS["oauth_failed"]))
+        return redirect(
+            add_auth_notice(reverse("users:login"), AUTH_MESSAGE_KEYS["oauth_failed"])
+        )
 
     state_token = request.GET.get("state", "")
     code = request.GET.get("code", "")
     error = request.GET.get("error", "")
 
     if error or not code:
-        return redirect(add_auth_notice(reverse("users:login"), AUTH_MESSAGE_KEYS["oauth_failed"]))
+        return redirect(
+            add_auth_notice(reverse("users:login"), AUTH_MESSAGE_KEYS["oauth_failed"])
+        )
 
     try:
         state_data = signing.loads(state_token, salt="users.google.oauth", max_age=600)
     except signing.BadSignature:
-        return redirect(add_auth_notice(reverse("users:login"), AUTH_MESSAGE_KEYS["oauth_failed"]))
+        return redirect(
+            add_auth_notice(reverse("users:login"), AUTH_MESSAGE_KEYS["oauth_failed"])
+        )
 
     role = normalize_role(state_data.get("role"))
     mode = str(state_data.get("mode", "login")).strip().lower()
@@ -360,11 +419,21 @@ def google_oauth_callback(request: HttpRequest) -> HttpResponse:
         access_token = token_data.get("access_token", "")
         profile = fetch_google_userinfo(access_token)
     except requests.RequestException:
-        return redirect(add_auth_notice(f"{reverse('users:login')}?role={role}", AUTH_MESSAGE_KEYS["oauth_failed"]))
+        return redirect(
+            add_auth_notice(
+                f"{reverse('users:login')}?role={role}",
+                AUTH_MESSAGE_KEYS["oauth_failed"],
+            )
+        )
 
     email = str(profile.get("email", "")).strip().lower()
     if not email:
-        return redirect(add_auth_notice(f"{reverse('users:login')}?role={role}", AUTH_MESSAGE_KEYS["oauth_failed"]))
+        return redirect(
+            add_auth_notice(
+                f"{reverse('users:login')}?role={role}",
+                AUTH_MESSAGE_KEYS["oauth_failed"],
+            )
+        )
 
     google_email_verified = bool(profile.get("email_verified", False))
     full_name = str(profile.get("name", "")).strip()
@@ -374,11 +443,21 @@ def google_oauth_callback(request: HttpRequest) -> HttpResponse:
     user = User.objects.filter(email__iexact=email).first()
 
     if user and is_django_admin_user(user):
-        return redirect(add_auth_notice(f"{reverse('users:login')}?role={role}", AUTH_MESSAGE_KEYS["oauth_failed"]))
+        return redirect(
+            add_auth_notice(
+                f"{reverse('users:login')}?role={role}",
+                AUTH_MESSAGE_KEYS["oauth_failed"],
+            )
+        )
 
     if user is None:
         if mode != "register":
-            return redirect(add_auth_notice(f"{reverse('users:login')}?role={role}", AUTH_MESSAGE_KEYS["oauth_failed"]))
+            return redirect(
+                add_auth_notice(
+                    f"{reverse('users:login')}?role={role}",
+                    AUTH_MESSAGE_KEYS["oauth_failed"],
+                )
+            )
 
         create_fields = {
             "first_name": first_name,
@@ -411,16 +490,19 @@ def google_oauth_callback(request: HttpRequest) -> HttpResponse:
             )
         else:
             send_verification_email(request, user)
-            return redirect(add_auth_notice(
-                f"{reverse('users:login')}?{urlencode({'role': user.role, 'email': user.email})}",
-                AUTH_MESSAGE_KEYS["verification_required"],
-            ))
+            return redirect(
+                add_auth_notice(
+                    f"{reverse('users:login')}?{urlencode({'role': user.role, 'email': user.email})}",
+                    AUTH_MESSAGE_KEYS["verification_required"],
+                )
+            )
 
     login(request, user)
     return redirect(login_redirect_url(user.role))
 
 
 # ── Dashboard & Logout ───────────────────────────────────────────────────────
+
 
 @login_required(login_url="users:login")
 @require_GET
@@ -441,14 +523,20 @@ def dashboard(request: HttpRequest, role: str) -> HttpResponse:
     if role == "vendor":
         return redirect("users:vendor_dashboard")
 
-    return render(request, f"users/{role}/dashboard.html", dashboard_context(request, role))
+    return render(
+        request,
+        f"users/{role}/dashboard.html",
+        dashboard_context(request, role),
+    )
 
 
 def _client_access_redirect(request: HttpRequest):
     if is_django_admin_user(request.user):
         return redirect(DJANGO_ADMIN_URL)
     if normalize_role(getattr(request.user, "role", AUTH_DEFAULT_ROLE)) != "client":
-        return redirect(login_redirect_url(getattr(request.user, "role", AUTH_DEFAULT_ROLE)))
+        return redirect(
+            login_redirect_url(getattr(request.user, "role", AUTH_DEFAULT_ROLE))
+        )
     return None
 
 
@@ -479,7 +567,6 @@ def vendor_dashboard_view(request: HttpRequest) -> HttpResponse:
     context = vendor_base_context(request, "dashboard")
     context.update(vendor_dashboard_data(request))
     return render(request, "users/vendor/dashboard.html", context)
-
 
 
 @login_required(login_url="users:login")
@@ -519,7 +606,11 @@ def vendor_profile_update_view(request: HttpRequest) -> HttpResponse:
     user.address = address
     user.save()
 
-    return redirect(add_auth_notice(reverse("users:vendor_profile"), AUTH_MESSAGE_KEYS["user_updated"]))
+    return redirect(
+        add_auth_notice(
+            reverse("users:vendor_profile"), AUTH_MESSAGE_KEYS["user_updated"]
+        )
+    )
 
 
 @login_required(login_url="users:login")
@@ -533,11 +624,21 @@ def vendor_delete_account_view(request: HttpRequest) -> HttpResponse:
     user = request.user
 
     if not user.check_password(password):
-        return redirect(add_auth_notice(reverse("users:vendor_profile"), AUTH_MESSAGE_KEYS["user_delete_failed"]))
+        return redirect(
+            add_auth_notice(
+                reverse("users:vendor_profile"),
+                AUTH_MESSAGE_KEYS["user_delete_failed"],
+            )
+        )
 
     logout(request)
     user.delete()
-    return redirect(add_auth_notice(f"{reverse('users:login')}?role=vendor", AUTH_MESSAGE_KEYS["user_deleted"]))
+    return redirect(
+        add_auth_notice(
+            f"{reverse('users:login')}?role=vendor",
+            AUTH_MESSAGE_KEYS["user_deleted"],
+        )
+    )
 
 
 @login_required(login_url="users:login")
@@ -580,7 +681,11 @@ def client_profile_update_view(request: HttpRequest) -> HttpResponse:
     user.address = address
     user.save()
 
-    return redirect(add_auth_notice(reverse("users:client_profile"), AUTH_MESSAGE_KEYS["user_updated"]))
+    return redirect(
+        add_auth_notice(
+            reverse("users:client_profile"), AUTH_MESSAGE_KEYS["user_updated"]
+        )
+    )
 
 
 @login_required(login_url="users:login")
@@ -594,11 +699,21 @@ def client_delete_account_view(request: HttpRequest) -> HttpResponse:
     user = request.user
 
     if not user.check_password(password):
-        return redirect(add_auth_notice(reverse("users:client_profile"), AUTH_MESSAGE_KEYS["user_delete_failed"]))
+        return redirect(
+            add_auth_notice(
+                reverse("users:client_profile"),
+                AUTH_MESSAGE_KEYS["user_delete_failed"],
+            )
+        )
 
     logout(request)
     user.delete()
-    return redirect(add_auth_notice(f"{reverse('users:login')}?role=client", AUTH_MESSAGE_KEYS["user_deleted"]))
+    return redirect(
+        add_auth_notice(
+            f"{reverse('users:login')}?role=client",
+            AUTH_MESSAGE_KEYS["user_deleted"],
+        )
+    )
 
 
 @login_required(login_url="users:login")
@@ -625,8 +740,60 @@ def admin_users_view(request: HttpRequest) -> HttpResponse:
     notice = request.GET.get("auth_message", "").strip()
     if notice:
         context["notice"] = notice
-        context["notice_level"] = request.GET.get("auth_level", "info").strip() or "info"
+        context["notice_level"] = (
+            request.GET.get("auth_level", "info").strip() or "info"
+        )
     return render(request, "users/admin/users.html", context)
+
+
+@login_required(login_url="users:login")
+@require_GET
+def admin_user_profile_view(request: HttpRequest, user_id: int) -> HttpResponse:
+    redirect_response = _admin_access_redirect(request)
+    if redirect_response is not None:
+        return redirect_response
+
+    target_user = get_object_or_404(User, pk=user_id)
+    context = admin_base_context(request, "users")
+    context["target_user"] = target_user
+
+    events_data = {}
+    if target_user.role == "client":
+        from events.models import Event
+
+        events = Event.objects.filter(client=target_user)
+        for e in events:
+            date_str = e.event_date.isoformat()
+            if date_str not in events_data:
+                events_data[date_str] = []
+            events_data[date_str].append(
+                {
+                    "title": e.title,
+                    "venue": e.venue_name
+                    or ("Own Venue" if e.has_own_venue else "Not set"),
+                    "payment": e.get_payment_method_display(),
+                }
+            )
+    elif target_user.role == "vendor":
+        from events.models import EventServiceBooking
+
+        bookings = EventServiceBooking.objects.filter(
+            vendor=target_user, status__in=["pending", "approved"]
+        ).select_related("event", "service")
+        for b in bookings:
+            date_str = b.requested_date.isoformat()
+            if date_str not in events_data:
+                events_data[date_str] = []
+            events_data[date_str].append(
+                {
+                    "title": b.event.title,
+                    "service": b.service.name,
+                    "status": b.get_status_display(),
+                }
+            )
+
+    context["events_json"] = events_data
+    return render(request, "users/admin/user_profile.html", context)
 
 
 @login_required(login_url="users:login")
@@ -653,8 +820,15 @@ def admin_user_update_view(request: HttpRequest, user_id: int) -> HttpResponse:
                 category="verification",
                 link_url=role_dashboard_url(updated_user.role),
             )
-        if updated_user.role == "vendor" and updated_user.vendor_approval_status != previous_vendor_status:
-            approval_label = "approved" if updated_user.vendor_approval_status == ApprovalStatusChoices.ALLOWED else "rejected"
+        if (
+            updated_user.role == "vendor"
+            and updated_user.vendor_approval_status != previous_vendor_status
+        ):
+            approval_label = (
+                "approved"
+                if updated_user.vendor_approval_status == ApprovalStatusChoices.ALLOWED
+                else "rejected"
+            )
             notify_user(
                 updated_user,
                 f"Vendor {approval_label}",
@@ -662,9 +836,18 @@ def admin_user_update_view(request: HttpRequest, user_id: int) -> HttpResponse:
                 category="approval",
                 link_url=role_dashboard_url(updated_user.role),
             )
-        return redirect(add_auth_notice(reverse("users:admin_users"), AUTH_MESSAGE_KEYS["user_updated"]))
+        return redirect(
+            add_auth_notice(
+                reverse("users:admin_users"), AUTH_MESSAGE_KEYS["user_updated"]
+            )
+        )
 
-    return redirect(add_auth_notice(reverse("users:admin_users"), AUTH_MESSAGE_KEYS["user_update_failed"]))
+    return redirect(
+        add_auth_notice(
+            reverse("users:admin_users"),
+            AUTH_MESSAGE_KEYS["user_update_failed"],
+        )
+    )
 
 
 @login_required(login_url="users:login")
@@ -676,7 +859,9 @@ def admin_user_delete_view(request: HttpRequest, user_id: int) -> HttpResponse:
 
     user = get_object_or_404(User, pk=user_id, is_superuser=False)
     user.delete()
-    return redirect(add_auth_notice(reverse("users:admin_users"), AUTH_MESSAGE_KEYS["user_deleted"]))
+    return redirect(
+        add_auth_notice(reverse("users:admin_users"), AUTH_MESSAGE_KEYS["user_deleted"])
+    )
 
 
 @login_required(login_url="users:login")
@@ -690,7 +875,11 @@ def admin_approvals_view(request: HttpRequest) -> HttpResponse:
     selected_filter = request.GET.get("filter", "all")
     from_date = request.GET.get("from_date", "").strip()
     to_date = request.GET.get("to_date", "").strip()
-    context.update(admin_approvals_data(filter_key=selected_filter, from_date=from_date, to_date=to_date))
+    context.update(
+        admin_approvals_data(
+            filter_key=selected_filter, from_date=from_date, to_date=to_date
+        )
+    )
     return render(request, "users/admin/approvals.html", context)
 
 
@@ -715,16 +904,28 @@ def admin_approval_update_view(request: HttpRequest) -> HttpResponse:
     if filtered_params:
         redirect_url = f"{redirect_url}?{urlencode(filtered_params)}"
 
-    if decision not in {"approve", "reject"} or request_type not in {"vendor", "service"} or not request_id.isdigit():
-        return redirect(add_auth_notice(redirect_url, AUTH_MESSAGE_KEYS["approval_update_failed"]))
+    if (
+        decision not in {"approve", "reject"}
+        or request_type not in {"vendor", "service"}
+        or not request_id.isdigit()
+    ):
+        return redirect(
+            add_auth_notice(redirect_url, AUTH_MESSAGE_KEYS["approval_update_failed"])
+        )
 
-    target_status = ApprovalStatusChoices.ALLOWED if decision == "approve" else ApprovalStatusChoices.REJECTED
+    target_status = (
+        ApprovalStatusChoices.ALLOWED
+        if decision == "approve"
+        else ApprovalStatusChoices.REJECTED
+    )
 
     if request_type == "vendor":
         vendor = get_object_or_404(User, pk=int(request_id), role="vendor")
         vendor.vendor_approval_status = target_status
         vendor.save(update_fields=["vendor_approval_status"])
-        approval_label = "approved" if target_status == ApprovalStatusChoices.ALLOWED else "rejected"
+        approval_label = (
+            "approved" if target_status == ApprovalStatusChoices.ALLOWED else "rejected"
+        )
         notify_user(
             vendor,
             f"Vendor {approval_label}",
@@ -733,16 +934,18 @@ def admin_approval_update_view(request: HttpRequest) -> HttpResponse:
             link_url=role_dashboard_url(vendor.role),
         )
     else:
-        from services.models import ApprovalRequest
-
-        approval_request = get_object_or_404(ApprovalRequest, pk=int(request_id), request_type="service")
+        approval_request = get_object_or_404(
+            ApprovalRequest, pk=int(request_id), request_type="service"
+        )
         approval_request.status = target_status
         approval_request.save(update_fields=["status"])
 
         service = approval_request.service
         service.is_approved = target_status == ApprovalStatusChoices.ALLOWED
         service.save(update_fields=["is_approved"])
-        approval_label = "approved" if target_status == ApprovalStatusChoices.ALLOWED else "rejected"
+        approval_label = (
+            "approved" if target_status == ApprovalStatusChoices.ALLOWED else "rejected"
+        )
         notify_user(
             approval_request.vendor,
             f"Service {approval_label}",
@@ -751,7 +954,9 @@ def admin_approval_update_view(request: HttpRequest) -> HttpResponse:
             link_url=reverse("services:vendor_services"),
         )
 
-    return redirect(add_auth_notice(redirect_url, AUTH_MESSAGE_KEYS["approval_updated"]))
+    return redirect(
+        add_auth_notice(redirect_url, AUTH_MESSAGE_KEYS["approval_updated"])
+    )
 
 
 @login_required(login_url="users:login")
@@ -765,7 +970,9 @@ def notification_feed_view(request: HttpRequest) -> JsonResponse:
 @login_required(login_url="users:login")
 @require_POST
 def notification_mark_seen_view(request: HttpRequest) -> JsonResponse:
-    notification_queryset(request.user).filter(is_seen=False).update(is_seen=True, seen_at=timezone.now())
+    notification_queryset(request.user).filter(is_seen=False).update(
+        is_seen=True, seen_at=timezone.now()
+    )
     return JsonResponse({"ok": True, "notification_unseen_count": 0})
 
 

@@ -61,11 +61,17 @@ class RegisterForm(forms.Form):
         if role == "client":
             payload.update(
                 {
-                    "first_name": str(post_data.get("client_first_name", "")).strip(),
-                    "last_name": str(post_data.get("client_last_name", "")).strip(),
+                    "first_name": str(
+                        post_data.get("client_first_name", "")
+                    ).strip(),
+                    "last_name": str(
+                        post_data.get("client_last_name", "")
+                    ).strip(),
                     "email": str(post_data.get("client_email", "")).strip(),
                     "password": str(post_data.get("client_password", "")),
-                    "confirm_password": str(post_data.get("client_confirm_password", "")),
+                    "confirm_password": str(
+                        post_data.get("client_confirm_password", "")
+                    ),
                 }
             )
             return cls(payload)
@@ -73,22 +79,32 @@ class RegisterForm(forms.Form):
         if role == "vendor":
             payload.update(
                 {
-                    "company_name": str(post_data.get("vendor_company_name", "")).strip(),
+                    "company_name": str(
+                        post_data.get("vendor_company_name", "")
+                    ).strip(),
                     "email": str(post_data.get("vendor_email", "")).strip(),
                     "password": str(post_data.get("vendor_password", "")),
-                    "confirm_password": str(post_data.get("vendor_confirm_password", "")),
+                    "confirm_password": str(
+                        post_data.get("vendor_confirm_password", "")
+                    ),
                 }
             )
             return cls(payload)
 
         payload.update(
             {
-                "first_name": str(post_data.get("admin_first_name", "")).strip(),
+                "first_name": str(
+                    post_data.get("admin_first_name", "")
+                ).strip(),
                 "last_name": str(post_data.get("admin_last_name", "")).strip(),
                 "email": str(post_data.get("admin_email", "")).strip(),
                 "password": str(post_data.get("admin_password", "")),
-                "confirm_password": str(post_data.get("admin_confirm_password", "")),
-                "referral_code": str(post_data.get("admin_referral_code", "")).strip(),
+                "confirm_password": str(
+                    post_data.get("admin_confirm_password", "")
+                ),
+                "referral_code": str(
+                    post_data.get("admin_referral_code", "")
+                ).strip(),
             }
         )
         return cls(payload)
@@ -122,7 +138,9 @@ class RegisterForm(forms.Form):
             self.add_error("confirm_password", "Passwords do not match.")
 
         if email and User.objects.filter(email__iexact=email).exists():
-            self.add_error("email", "An account with that email already exists.")
+            self.add_error(
+                "email", "An account with that email already exists."
+            )
 
         if role in {"client", "admin"}:
             if not cleaned_data.get("first_name"):
@@ -159,9 +177,15 @@ class AdminUserForm(forms.ModelForm):
 
     def clean_email(self):
         email = self.cleaned_data["email"].strip().lower()
-        existing_user = User.objects.filter(email__iexact=email).exclude(pk=self.instance.pk).first()
+        existing_user = (
+            User.objects.filter(email__iexact=email)
+            .exclude(pk=self.instance.pk)
+            .first()
+        )
         if existing_user:
-            raise forms.ValidationError("An account with that email already exists.")
+            raise forms.ValidationError(
+                "An account with that email already exists."
+            )
         return email
 
     def clean_first_name(self):

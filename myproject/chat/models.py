@@ -4,9 +4,18 @@ from django.utils import timezone
 from datetime import timedelta
 from events.models import EventServiceBooking
 
+
 class Conversation(models.Model):
-    client = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="client_conversations")
-    vendor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="vendor_conversations")
+    client = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="client_conversations",
+    )
+    vendor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="vendor_conversations",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -26,7 +35,7 @@ class Conversation(models.Model):
             event__client=self.client,
             service__vendor=self.vendor,
             status__in=["approved", "pending"],
-            event__event_date__gte=cutoff_date
+            event__event_date__gte=cutoff_date,
         ).exists()
         return not has_active_booking
 
@@ -37,7 +46,7 @@ class Conversation(models.Model):
             event__client=self.client,
             service__vendor=self.vendor,
             status__in=["approved", "pending"],
-            event__event_date__gte=cutoff_date
+            event__event_date__gte=cutoff_date,
         ).select_related("event", "service")
 
     def unread_count_for(self, user):
@@ -45,8 +54,16 @@ class Conversation(models.Model):
 
 
 class Message(models.Model):
-    conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name="messages")
-    sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="sent_messages", null=True, blank=True)
+    conversation = models.ForeignKey(
+        Conversation, on_delete=models.CASCADE, related_name="messages"
+    )
+    sender = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="sent_messages",
+        null=True,
+        blank=True,
+    )
     content = models.TextField()
     is_system = models.BooleanField(default=False)
     is_read = models.BooleanField(default=False)
