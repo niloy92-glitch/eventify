@@ -97,6 +97,7 @@
     const formFieldIds = [
       "client-event-title",
       "client-event-date",
+        "client-event-time",
       "client-event-venue-name",
       "client-event-venue-address",
       "client-event-payment-method",
@@ -109,12 +110,12 @@
       const venueName = document.getElementById("client-event-venue-name");
       const venueAddress = document.getElementById("client-event-venue-address");
       if (ownVenue && venueName && venueAddress) {
-        venueName.disabled = !ownVenue.checked;
-        venueAddress.disabled = !ownVenue.checked;
+        venueName.disabled = ownVenue.checked;
+        venueAddress.disabled = ownVenue.checked;
         const nameGroup = venueName.closest(".form-field");
         const addressGroup = venueAddress.closest(".form-field");
-        if (nameGroup) nameGroup.style.opacity = !ownVenue.checked ? "0.5" : "1";
-        if (addressGroup) addressGroup.style.opacity = !ownVenue.checked ? "0.5" : "1";
+        if (nameGroup) nameGroup.style.opacity = ownVenue.checked ? "0.5" : "1";
+        if (addressGroup) addressGroup.style.opacity = ownVenue.checked ? "0.5" : "1";
       }
     }
 
@@ -272,15 +273,19 @@
 
       const titleField = document.getElementById("client-event-title");
       const dateField = document.getElementById("client-event-date");
+      const timeField = document.getElementById("client-event-time");
       const venueField = document.getElementById("client-event-venue-name");
       const addressField = document.getElementById("client-event-venue-address");
+      const paymentField = document.getElementById("client-event-payment-method");
       const ownVenueField = document.getElementById("client-event-own-venue");
       const notesField = document.getElementById("client-event-notes");
 
       if (titleField) titleField.value = event.title || "";
       if (dateField) dateField.value = event.event_date || "";
+      if (timeField) timeField.value = event.event_time || "";
       if (venueField) venueField.value = event.venue_name || "";
       if (addressField) addressField.value = event.venue_address || "";
+      if (paymentField) paymentField.value = event.payment_method || "";
       if (ownVenueField) ownVenueField.checked = Boolean(event.has_own_venue);
       if (notesField) notesField.value = event.notes || "";
 

@@ -1,0 +1,39 @@
+{% extends 'users/client/base.html' %}
+
+{% block title %}My Transactions{% endblock %}
+
+{% block client_content %}
+<section class="card page-head">
+  <h1>Transactions</h1>
+  <p class="muted">All payments you made for events (currency: BDT).</p>
+</section>
+
+<section class="card">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Reference</th>
+          <th>Event</th>
+          <th>Amount</th>
+          <th>Status</th>
+          <th>When</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in transactions %}
+          <tr>
+            <td>{{ row.tx_ref }}</td>
+            <td>{{ row.event_title }}</td>
+            <td>BDT {{ row.amount }}</td>
+            <td>{{ row.status_label }}</td>
+            <td>{{ row.created_at }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5">No transactions yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

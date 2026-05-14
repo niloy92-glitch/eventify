@@ -1,0 +1,62 @@
+{% extends 'users/vendor/base.html' %}
+
+{% block title %}Vendor Transactions{% endblock %}
+
+{% block vendor_content %}
+<section class="card page-head">
+  <h1>Transactions</h1>
+  <p class="muted">Track payouts and maintain payment details for receiving funds.</p>
+</section>
+
+<section class="card" style="margin-bottom: 1rem;">
+  <div class="row-between" style="gap: 1rem; align-items: flex-start;">
+    <div>
+      <h2>Available Balance</h2>
+      <p class="stat-value">BDT {{ balance }}</p>
+    </div>
+    <form method="post" style="min-width: 320px;">
+      {% csrf_token %}
+      <h3 style="margin-top: 0;">Payment Information</h3>
+      <div style="display: grid; gap: 0.5rem;">
+        <label for="id_provider">Provider</label>
+        {{ payment_form.provider }}
+        <label for="id_account_name">Account Name</label>
+        {{ payment_form.account_name }}
+        <label for="id_account_number">Account Number / Phone</label>
+        {{ payment_form.account_number }}
+        <label style="display: flex; gap: 0.5rem; align-items: center;">{{ payment_form.is_active }} Active</label>
+        <button class="btn btn-primary" type="submit">Save Payment Info</button>
+      </div>
+    </form>
+  </div>
+</section>
+
+<section class="card">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Reference</th>
+          <th>Event</th>
+          <th>Service</th>
+          <th>Received</th>
+          <th>When</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+          <tr>
+            <td>{{ row.tx_ref }}</td>
+            <td>{{ row.event_title }}</td>
+            <td>{{ row.service_name }}</td>
+            <td>BDT {{ row.paid_amount }}</td>
+            <td>{{ row.created_at }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5">No payouts yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

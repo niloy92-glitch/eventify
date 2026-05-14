@@ -1,0 +1,149 @@
+<div class="modal" id="event-payment-modal" aria-hidden="true">
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="payment-modal-title" style="width: min(600px, 100%); max-height: 90vh; overflow-y: auto;">
+    <div class="row-between" style="gap: 12px; align-items: flex-start;">
+      <div>
+        <p class="event-card-kicker">Event Complete & Pay</p>
+        <h2 id="payment-modal-title">Complete event and process payment</h2>
+        <p class="muted" id="payment-event-title"></p>
+        <p class="muted" id="payment-event-date"></p>
+      </div>
+      <button type="button" class="service-detail-close" data-close-modal="event-payment-modal" aria-label="Close">×</button>
+    </div>
+
+    <div id="payment-workflow">
+      <!-- Step 1: Bill & Rating -->
+      <div id="payment-step-bill" class="payment-step">
+        <div class="event-completion-note card" style="padding: 12px; margin: 16px 0;">
+          <p class="muted" style="margin: 0;">Review the bill and rate each service. You can pay the full amount or a partial amount (rest will be due).</p>
+        </div>
+
+        <div id="payment-services-list" class="event-completion-services" style="margin-bottom: 1rem;"></div>
+
+        <section class="card" style="padding: 14px; margin: 1rem 0; background: #f8f9fa;">
+          <h3 style="margin: 0 0 12px 0;">Bill Summary</h3>
+          <table style="width: 100%; border-collapse: collapse;">
+            <tbody>
+              <tr style="border-bottom: 1px solid #ddd;">
+                <td><strong>Total Due</strong></td>
+                <td style="text-align: right;"><strong>BDT <span id="bill-total">0.00</span></strong></td>
+              </tr>
+              <tr style="border-bottom: 1px solid #ddd;">
+                <td><strong>Already Paid</strong></td>
+                <td style="text-align: right;">BDT <span id="bill-paid">0.00</span></td>
+              </tr>
+              <tr style="border-bottom: 2px solid #333;">
+                <td><strong>Outstanding</strong></td>
+                <td style="text-align: right;"><strong>BDT <span id="bill-outstanding">0.00</span></strong></td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <div style="margin: 1rem 0;">
+          <label for="payment-amount-input" style="display: block; margin-bottom: 0.5rem;">
+            <strong>Amount to Pay Now (BDT)</strong>
+          </label>
+          <input
+            type="text"
+            id="payment-amount-input"
+            class="input"
+            placeholder="0.00"
+            style="font-size: 1.1rem; padding: 0.75rem;"
+          />
+          <p class="muted" style="margin: 0.5rem 0 0 0; font-size: 0.9rem;">
+            <span id="payment-remaining-text">Enter amount</span>
+          </p>
+        </div>
+
+        <div style="margin: 1rem 0;">
+          <label style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem;">
+            <input type="checkbox" id="payment-select-all-services" style="width: auto;" />
+            <strong>Pay for all selected services</strong>
+          </label>
+          <div id="payment-service-checkboxes" style="display: grid; gap: 0.5rem; padding-left: 1.5rem;"></div>
+        </div>
+
+        <div class="modal-actions" style="margin-top: 1rem;">
+          <button type="button" class="btn modal-close-btn">Cancel</button>
+          <button type="button" class="btn btn-primary" id="payment-proceed-btn">Proceed to Payment</button>
+        </div>
+      </div>
+
+      <!-- Step 2: Payment Processing -->
+      <div id="payment-step-processing" class="payment-step" hidden>
+        <div style="text-align: center; padding: 2rem;">
+          <p style="margin-bottom: 1rem;">Processing payment...</p>
+          <div style="display: inline-block; border: 3px solid #f0f0f0; border-radius: 50%; border-top: 3px solid #333; width: 40px; height: 40px; animation: spin 1s linear infinite;"></div>
+        </div>
+        <style>
+          @keyframes spin { to { transform: rotate(360deg); } }
+        </style>
+      </div>
+
+      <!-- Step 3: Success -->
+      <div id="payment-step-success" class="payment-step" hidden>
+        <div style="text-align: center; padding: 2rem;">
+          <p style="font-size: 3rem; margin: 0;">✓</p>
+          <h3 style="margin: 1rem 0;">Payment Successful</h3>
+          <p class="muted" id="payment-success-message" style="margin-bottom: 1rem;"></p>
+          <button type="button" class="btn btn-primary modal-close-btn">Close</button>
+        </div>
+      </div>
+
+      <!-- Step 4: Failure -->
+      <div id="payment-step-failure" class="payment-step" hidden>
+        <div style="text-align: center; padding: 2rem;">
+          <p style="font-size: 3rem; margin: 0; color: #d32f2f;">✕</p>
+          <h3 style="margin: 1rem 0; color: #d32f2f;">Payment Failed</h3>
+          <p class="muted" id="payment-failure-message" style="margin-bottom: 1rem;"></p>
+          <div id="payment-failure-vendors" style="text-align: left; background: #fff3cd; padding: 1rem; border-radius: 4px; margin-bottom: 1rem; display: none;">
+            <p><strong>Missing Vendor Info:</strong></p>
+            <ul id="payment-failure-vendor-list" style="margin: 0.5rem 0; padding-left: 1.5rem;"></ul>
+          </div>
+          <button type="button" class="btn modal-close-btn">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<template id="payment-service-template">
+  <section class="card event-rating-card" style="padding: 14px; display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: start;">
+    <div style="grid-column: 1 / -1;">
+      <div style="display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: start; margin-bottom: 12px;">
+        <div>
+          <h3 class="payment-service-name" style="margin: 0;"></h3>
+          <p class="muted payment-service-type" style="margin: 0;"></p>
+        </div>
+        <div style="text-align: right;">
+          <p class="muted" style="margin: 0; font-size: 0.9rem;">Total Due</p>
+          <p style="margin: 0; font-size: 1.2rem; font-weight: bold;">BDT <span class="payment-service-price">0.00</span></p>
+        </div>
+      </div>
+    </div>
+
+    <div style="grid-column: 1 / -1;">
+      <fieldset class="star-rating" data-service-id="" style="display: flex; flex-direction: row-reverse; justify-content: flex-end; gap: 0.25rem;">
+        <legend class="sr-only">Rate service</legend>
+        <input type="radio" value="5" />
+        <label class="star-label">★</label>
+        <input type="radio" value="4" />
+        <label class="star-label">★</label>
+        <input type="radio" value="3" />
+        <label class="star-label">★</label>
+        <input type="radio" value="2" />
+        <label class="star-label">★</label>
+        <input type="radio" value="1" />
+        <label class="star-label">★</label>
+      </fieldset>
+      <p class="muted payment-service-rating-label" style="font-size: 0.9rem; margin: 4px 0 0 0;">Choose stars</p>
+    </div>
+  </section>
+</template>
+
+<template id="payment-service-checkbox-template">
+  <label style="display: flex; gap: 0.5rem; align-items: center;">
+    <input type="checkbox" class="payment-service-checkbox" data-booking-id="" style="width: auto;" />
+    <span class="payment-checkbox-label"></span>
+  </label>
+</template>

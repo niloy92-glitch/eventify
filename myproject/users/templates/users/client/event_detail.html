@@ -17,7 +17,7 @@
       <p class="muted">{{ selected_event.event_date_label }}</p>
     </div>
     <div class="row-between event-detail-actions-top">
-      <a class="btn btn-primary" href="{{ edit_url }}" data-open-event-edit>Edit Event</a>
+      <button type="button" class="btn btn-primary" id="edit-event-btn">Edit Event</button>
       {% if not selected_event.completed_at %}
         {% if can_complete_event %}
           <button type="button" class="btn btn-primary" id="complete-event-btn">Complete Event</button>
@@ -110,8 +110,7 @@
   </div>
 </section>
 
-{% if open_edit_modal %}
-  <div class="modal open" id="event-edit-modal" aria-hidden="false">
+  <div class="modal{% if open_edit_modal %} open{% endif %}" id="event-edit-modal" aria-hidden="{% if open_edit_modal %}false{% else %}true{% endif %}"{% if not open_edit_modal %} hidden inert="inert"{% endif %}>
     <div class="modal-card event-edit-modal-card" role="dialog" aria-modal="true" aria-labelledby="event-edit-modal-title">
       <div class="event-edit-modal-header">
         <div class="event-edit-modal-heading">
@@ -131,6 +130,11 @@
         <div class="form-field">
           <label class="form-field-label" for="client-event-date">Event date</label>
           {{ event_form.event_date }}
+        </div>
+
+        <div class="form-field">
+          <label class="form-field-label" for="client-event-time">Event time</label>
+          {{ event_form.event_time }}
         </div>
 
         <div class="form-field">
@@ -172,7 +176,6 @@
       </form>
     </div>
   </div>
-{% endif %}
 
 <script>
   document.addEventListener("DOMContentLoaded", function () {
@@ -196,71 +199,33 @@
       toggleVenueFields();
     }
 
-    function openModal(modal) {
-      if (!modal) return;
-      modal.classList.add("open");
-      modal.setAttribute("aria-hidden", "false");
-      modal.removeAttribute("inert");
-    }
 
-    function closeModal(modal) {
-      if (!modal) return;
-      modal.classList.remove("open");
-      modal.setAttribute("aria-hidden", "true");
-      modal.setAttribute("inert", "inert");
-      document.activeElement?.blur();
-    }
 
-    // Initialize modals to start hidden
+    const shouldOpenEditModal = {{ open_edit_modal|yesno:"true,false" }};
+
+    // Ensure modal state matches context
     const editModal = document.getElementById("event-edit-modal");
     if (editModal) {
-      editModal.classList.remove("open");
-      editModal.setAttribute("aria-hidden", "true");
-      editModal.setAttribute("inert", "inert");
+      if (shouldOpenEditModal) {
+        openModal(editModal);
+      } else {
+        closeModal(editModal);
+      }
     }
 
-    // Close modal when clicking close buttons
-    document.querySelectorAll("[data-close-modal]").forEach(function (button) {
-      const modalId = button.getAttribute("data-close-modal");
-      if (!modalId) return;
-      const targetModal = document.getElementById(modalId);
-      button.addEventListener("click", function (e) {
-        e.preventDefault();
-        closeModal(targetModal);
-      });
-    });
 
     // Open modal when clicking edit button
-    document.querySelectorAll("[data-open-event-edit]").forEach(function (button) {
-      button.addEventListener("click", function (e) {
+    const editBtn = document.getElementById("edit-event-btn");
+    if (editBtn) {
+      editBtn.addEventListener("click", function (e) {
         e.preventDefault();
         if (editModal) {
           openModal(editModal);
         }
       });
-    });
-
-    // Close modal when clicking outside (on overlay)
-    document.querySelectorAll(".modal").forEach(function (modal) {
-      modal.addEventListener("click", function (e) {
-        if (e.target === modal) {
-          closeModal(modal);
-        }
-      });
-    });
-
-    // Handle form submission for event edit
-    const eventForm = editModal?.querySelector("form");
-    if (eventForm) {
-      eventForm.addEventListener("submit", function (e) {
-        // Let the form submit naturally, then close the modal
-        setTimeout(function () {
-          closeModal(editModal);
-        }, 100);
-      });
     }
 
-    // Handle complete event button
+    // Handle complete event button - opens payment modal instead
     const completeBtn = document.getElementById("complete-event-btn");
     if (completeBtn) {
       completeBtn.addEventListener("click", function (e) {
@@ -268,23 +233,16 @@
         const eventId = Number({{ selected_event.id }});
         const eventTitle = "{{ selected_event.title|escapejs }}";
         const eventDate = "{{ selected_event.event_date|escapejs }}";
-        const services = {{ rating_services_json|safe }};
+        const bookings = {{ rating_services_json|safe }};
 
-        if (window.eventCompletionModal && typeof window.eventCompletionModal.open === "function") {
-          window.eventCompletionModal.open(eventId, eventTitle, eventDate, Array.isArray(services) ? services : []);
-        } else {
-          window.__openEventCompletionModal = {
-            eventId: eventId,
-            eventTitle: eventTitle,
-            eventDate: eventDate,
-            services: Array.isArray(services) ? services : [],
-          };
+        if (window.eventPaymentModal && typeof window.eventPaymentModal.open === "function") {
+          window.eventPaymentModal.open(eventId, eventTitle, eventDate, bookings);
         }
       });
     }
   });
 </script>
 
-{% include 'users/client/components/event_completion_modal_clean.html' %}
-<script src="{% static 'users/js/event_completion.js' %}"></script>
+{% include 'users/client/components/event_payment_modal.html' %}
+<script src="{% static 'users/js/event_payment_modal.js' %}"></script>
 {% endblock %}

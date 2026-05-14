@@ -636,6 +636,86 @@ def vendor_booking_request_update(request: HttpRequest) -> HttpResponse:
             )
         )
 
+    elif decision == "approve":
+        # Vendor directly approves the booking request (without quoting)
+        booking.status = "approved"
+        booking.responded_at = timezone.now()
+        booking.save(
+            update_fields=[
+                "status",
+                "responded_at",
+                "updated_at",
+            ]
+        )
+        notify_user(
+            booking.event.client,
+            "Booking approved",
+            f"Your request for '{booking.service.name}' was approved.",
+            category="approval",
+            link_url=reverse(
+                "events:client_event_detail",
+                kwargs={"event_id": booking.event.pk},
+            ),
+        )
+
+        from chat.models import Conversation, Message
+
+        conv, _ = Conversation.objects.get_or_create(
+            client=booking.event.client, vendor=booking.service.vendor
+        )
+        Message.objects.create(
+            conversation=conv,
+            is_system=True,
+            content=f"System: Vendor approved the booking request for '{booking.service.name}'.",
+        )
+
+        return redirect(
+            add_auth_notice(
+                reverse("users:vendor_dashboard"),
+                AUTH_MESSAGE_KEYS["booking_updated"],
+            )
+        )
+
+    elif decision == "reject":
+        # Vendor rejects the booking request
+        booking.status = "rejected"
+        booking.responded_at = timezone.now()
+        booking.save(
+            update_fields=[
+                "status",
+                "responded_at",
+                "updated_at",
+            ]
+        )
+        notify_user(
+            booking.event.client,
+            "Booking rejected",
+            f"Your request for '{booking.service.name}' was rejected.",
+            category="request",
+            link_url=reverse(
+                "events:client_event_detail",
+                kwargs={"event_id": booking.event.pk},
+            ),
+        )
+
+        from chat.models import Conversation, Message
+
+        conv, _ = Conversation.objects.get_or_create(
+            client=booking.event.client, vendor=booking.service.vendor
+        )
+        Message.objects.create(
+            conversation=conv,
+            is_system=True,
+            content=f"System: Vendor rejected the booking request for '{booking.service.name}'.",
+        )
+
+        return redirect(
+            add_auth_notice(
+                reverse("users:vendor_dashboard"),
+                AUTH_MESSAGE_KEYS["booking_updated"],
+            )
+        )
+
 
 # ── Rating System Endpoints ───────────────────────────────────────────────────
 

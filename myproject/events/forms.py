@@ -8,6 +8,7 @@ class EventForm(forms.ModelForm):
         fields = [
             "title",
             "event_date",
+            "event_time",
             "venue_name",
             "venue_address",
             "payment_method",
@@ -28,6 +29,15 @@ class EventForm(forms.ModelForm):
                     "id": "client-event-date",
                     "type": "date",
                 }
+            ),
+            "event_time": forms.TimeInput(
+                format="%H:%M",
+                attrs={
+                    "class": "form-field-input",
+                    "id": "client-event-time",
+                    "type": "time",
+                    "step": "60",
+                },
             ),
             "venue_name": forms.TextInput(
                 attrs={
