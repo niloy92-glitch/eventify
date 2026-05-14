@@ -21,7 +21,7 @@ from django.contrib.auth.tokens import default_token_generator
 from django.core import signing
 from django.core.paginator import Paginator
 from django.core.mail import send_mail
-from django.db.models import Count
+from django.db.models import Count, Sum
 from django.db import models
 from django.http import HttpRequest
 from django.template.loader import render_to_string
@@ -472,6 +472,19 @@ def _serialize_vendor_event(event, date_field_name: str, date_field) -> dict:
     }
 
 
+def _vendor_balance(user) -> str:
+    """Calculate vendor's available balance from released payouts."""
+    try:
+        from payment.models import Payout
+        balance = Payout.objects.filter(
+            vendor=user,
+            status="released"
+        ).aggregate(total=Sum("gross_amount"))["total"] or Decimal("0.00")
+        return f"{balance:.2f}"
+    except Exception:
+        return "0.00"
+
+
 def vendor_dashboard_data(request: HttpRequest) -> dict:
     today = timezone.localdate()
     upcoming_events = []
@@ -562,6 +575,7 @@ def vendor_dashboard_data(request: HttpRequest) -> dict:
             },
             "upcoming_events": upcoming_events,
             "booking_requests": booking_requests,
+            "vendor_balance": _vendor_balance(request.user),
         }
 
 
@@ -617,6 +631,16 @@ def vendor_base_context(request: HttpRequest, active_menu: str) -> dict:
             "label": messages_label,
             "href": reverse("chat:vendor_chat_list"),
             "active": active_menu == "messages",
+        },
+        {
+            "label": "Transactions",
+            "href": reverse("payment:vendor_transactions"),
+            "active": active_menu == "transactions",
+        },
+        {
+            "label": "Profile",
+            "href": reverse("users:vendor_profile"),
+            "active": active_menu == "profile",
         },
     ]
 
@@ -697,6 +721,11 @@ def admin_base_context(request: HttpRequest, active_menu: str) -> dict:
             "active": active_menu == "approvals",
         },
         {
+            "label": "Transactions",
+            "href": reverse("payment:admin_transactions"),
+            "active": active_menu == "transactions",
+        },
+        {
             "label": "Activity Logs",
             "href": reverse("users:admin_activity_logs"),
             "active": active_menu == "activity_logs",
@@ -772,6 +801,11 @@ def client_base_context(request: HttpRequest, active_menu: str) -> dict:
             "label": messages_label,
             "href": reverse("chat:client_chat_list"),
             "active": active_menu == "messages",
+        },
+        {
+            "label": "Transactions",
+            "href": reverse("payment:client_transactions"),
+            "active": active_menu == "transactions",
         },
         {
             "label": "Profile",
@@ -1081,6 +1115,27 @@ def admin_activity_logs_data(page_number: int = 1, per_page: int = 12) -> dict:
                 "when": row["created_at"],
             }
         )
+
+    # Include transaction entries
+    try:
+        from payment.models import Transaction
+        transactions = Transaction.objects.filter(status="success").select_related(
+            "client", "event"
+        ).order_by("-created_at")[:100]
+        
+        for txn in transactions:
+            client_name = getattr(txn.client, "get_full_name", lambda: "Unknown")() or str(txn.client)
+            event_title = getattr(txn.event, "title", "Unknown Event")
+            amount = f"{txn.amount:.2f}"
+            logs.append(
+                {
+                    "actor": client_name,
+                    "activity": f"Paid BDT {amount} for {event_title}",
+                    "when": txn.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+                }
+            )
+    except Exception:
+        pass
 
     paginator = Paginator(logs, per_page)
     page_obj = paginator.get_page(page_number)

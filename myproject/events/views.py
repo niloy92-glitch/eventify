@@ -215,15 +215,24 @@ def client_event_detail_view(
     )
     selected_event = _serialize_client_event(event)
     
-    # Pass service rows (same format as displayed in event details) so completion modal shows rating inputs
+    # Only approved bookings can be paid in checkout; include booking + service IDs.
     rating_services = []
-    for booking in event.service_requests.select_related('service').all():
+    for booking in event.service_requests.select_related("service").filter(status="approved"):
         service = booking.service
-        rating_services.append({
-            'id': service.pk,
-            'name': service.name,
-            'type': service.get_service_type_display(),
-        })
+        price_value = booking.quoted_price
+        if price_value is None:
+            price_value = booking.price_snapshot
+        if price_value is None:
+            price_value = service.price or 0
+        rating_services.append(
+            {
+                "booking_id": booking.pk,
+                "service_id": service.pk,
+                "service_name": service.name,
+                "service_type": service.get_service_type_display(),
+                "price": f"{Decimal(str(price_value)):.2f}",
+            }
+        )
     modal_target = str(request.GET.get("open", "")).strip().lower()
     detail_url = reverse("events:client_event_detail", kwargs={"event_id": event.pk})
     today = timezone.localdate()

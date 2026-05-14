@@ -1,0 +1,41 @@
+{% extends 'users/admin/base.html' %}
+
+{% block title %}Admin Transactions{% endblock %}
+
+{% block content %}
+<section class="card page-head">
+  <h1>Transactions</h1>
+  <p class="muted">All role transactions in one place.</p>
+</section>
+
+<section class="card">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Reference</th>
+          <th>Client</th>
+          <th>Event</th>
+          <th>Amount</th>
+          <th>Status</th>
+          <th>When</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+          <tr>
+            <td>{{ row.tx_ref }}</td>
+            <td>{{ row.client_name }}</td>
+            <td>{{ row.event_title }}</td>
+            <td>BDT {{ row.amount }}</td>
+            <td>{{ row.status_label }}</td>
+            <td>{{ row.created_at }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="6">No transactions found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

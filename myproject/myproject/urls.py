@@ -43,5 +43,6 @@ urlpatterns = [
     path("services/", include("services.urls")),
     path("events/", include("events.urls")),
     path("chat/", include("chat.urls")),
+    path("payment/", include("payment.urls")),
     path("admin/", admin.site.urls),
 ]
