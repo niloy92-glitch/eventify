@@ -396,6 +396,110 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   });
 
+  const filterForm = document.querySelector('.service-filter-form');
+  if (filterForm) {
+    const applyButton = filterForm.querySelector('[data-filter-apply]');
+    const clearButton = filterForm.querySelector('[data-filter-clear]');
+    const defaultState = {
+      q: '',
+      category: '',
+      min_price: '',
+      max_price: '',
+      min_rating: '',
+      sort: 'newest',
+    };
+
+    function readFilterState() {
+      const categoryInput = filterForm.querySelector('input[name="category"]:checked');
+      const qInput = filterForm.querySelector('input[name="q"]');
+      const minPriceInput = filterForm.querySelector('input[name="min_price"]');
+      const maxPriceInput = filterForm.querySelector('input[name="max_price"]');
+      const minRatingInput = filterForm.querySelector('select[name="min_rating"]');
+      const sortInput = filterForm.querySelector('select[name="sort"]');
+
+      return {
+        q: (qInput && qInput.value || '').trim(),
+        category: categoryInput ? categoryInput.value : '',
+        min_price: (minPriceInput && minPriceInput.value || '').trim(),
+        max_price: (maxPriceInput && maxPriceInput.value || '').trim(),
+        min_rating: (minRatingInput && minRatingInput.value || '').trim(),
+        sort: (sortInput && sortInput.value || 'newest').trim() || 'newest',
+      };
+    }
+
+    function stateEquals(first, second) {
+      return first.q === second.q &&
+        first.category === second.category &&
+        first.min_price === second.min_price &&
+        first.max_price === second.max_price &&
+        first.min_rating === second.min_rating &&
+        first.sort === second.sort;
+    }
+
+    function hasActiveFilters(state) {
+      return state.q !== defaultState.q ||
+        state.category !== defaultState.category ||
+        state.min_price !== defaultState.min_price ||
+        state.max_price !== defaultState.max_price ||
+        state.min_rating !== defaultState.min_rating ||
+        state.sort !== defaultState.sort;
+    }
+
+    function syncChipState() {
+      filterForm.querySelectorAll('.service-chip').forEach(function (label) {
+        const input = label.querySelector('input');
+        if (!input) return;
+        label.classList.toggle('is-active', input.checked);
+      });
+    }
+
+    function updateFilterButtons() {
+      const currentState = readFilterState();
+      if (applyButton) {
+        applyButton.disabled = stateEquals(currentState, defaultState) || stateEquals(currentState, readInitialState);
+      }
+      if (clearButton) {
+        clearButton.disabled = !hasActiveFilters(currentState);
+      }
+    }
+
+    const readInitialState = readFilterState();
+
+    function resetFilters() {
+      const qInput = filterForm.querySelector('input[name="q"]');
+      const categoryInputs = filterForm.querySelectorAll('input[name="category"]');
+      const minPriceInput = filterForm.querySelector('input[name="min_price"]');
+      const maxPriceInput = filterForm.querySelector('input[name="max_price"]');
+      const minRatingInput = filterForm.querySelector('select[name="min_rating"]');
+      const sortInput = filterForm.querySelector('select[name="sort"]');
+
+      if (qInput) qInput.value = '';
+      categoryInputs.forEach(function (input) {
+        input.checked = input.value === '';
+      });
+      if (minPriceInput) minPriceInput.value = '';
+      if (maxPriceInput) maxPriceInput.value = '';
+      if (minRatingInput) minRatingInput.value = '';
+      if (sortInput) sortInput.value = 'newest';
+
+      updateFilterButtons();
+      filterForm.requestSubmit ? filterForm.requestSubmit() : filterForm.submit();
+    }
+
+    filterForm.addEventListener('input', updateFilterButtons);
+    filterForm.addEventListener('change', updateFilterButtons);
+    filterForm.addEventListener('change', syncChipState);
+
+    if (clearButton) {
+      clearButton.addEventListener('click', function () {
+        resetFilters();
+      });
+    }
+
+    syncChipState();
+    updateFilterButtons();
+  }
+
   if (window.location.hash === '#service-detail-modal' && servicesData.length) {
     openFromCard(document.querySelector('.service-card[data-service-id]'));
   }
