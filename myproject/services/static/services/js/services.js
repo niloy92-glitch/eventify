@@ -22,6 +22,44 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
+  function renderStars(rating, count) {
+    if (!rating || rating === 0) {
+      return '☆☆☆☆☆';
+    }
+    const fullStars = Math.floor(rating);
+    const hasHalf = rating % 1 >= 0.5;
+    let stars = '★'.repeat(fullStars);
+    if (hasHalf) stars += '½';
+    return stars;
+  }
+
+  function fetchAndDisplayRating(serviceId) {
+    fetch('/services/' + serviceId + '/rating/')
+      .then(function (response) {
+        if (!response.ok) throw new Error('Network response failed');
+        return response.json();
+      })
+      .then(function (data) {
+        const starsEl = document.getElementById('rating-stars-' + serviceId);
+        const countEl = document.getElementById('rating-count-' + serviceId);
+        const ratingCount = Number(data.rating_count || 0);
+        
+        if (starsEl) {
+          starsEl.textContent = renderStars(data.avg_rating, ratingCount);
+          starsEl.title = ratingCount > 0 && data.avg_rating
+            ? data.avg_rating.toFixed(1) + '★ (' + ratingCount + ' rating' + (ratingCount !== 1 ? 's' : '') + ')'
+            : 'No ratings yet';
+        }
+
+        if (countEl) {
+          countEl.textContent = ratingCount > 0 ? '(' + ratingCount + ')' : 'No ratings yet';
+        }
+      })
+      .catch(function () {
+        // Rating fetch failed; display nothing
+      });
+  }
+
   const servicesData = readJsonScript('services-data');
   const upcomingEvents = readJsonScript('client-events-data');
   const serviceMap = new Map(servicesData.map(function (item) { return [String(item.id), item]; }));
@@ -33,6 +71,9 @@ document.addEventListener('DOMContentLoaded', function () {
   const companyEl = document.getElementById('service-detail-company');
   const typeEl = document.getElementById('service-detail-type');
   const descEl = document.getElementById('service-detail-desc');
+  const ratingContainer = document.getElementById('service-detail-rating');
+  const ratingStarsEl = document.getElementById('service-detail-rating-stars');
+  const ratingCountEl = document.getElementById('service-detail-rating-count');
   const calendarLabel = document.getElementById('service-calendar-label');
   const monthSelect = document.getElementById('service-calendar-month');
   const yearSelect = document.getElementById('service-calendar-year');
@@ -43,6 +84,8 @@ document.addEventListener('DOMContentLoaded', function () {
   const bookingStatus = document.getElementById('service-booking-status');
   const bookingServiceId = document.getElementById('service-booking-service-id');
   const bookingEventId = document.getElementById('service-booking-event-id');
+  const bookedEventsSection = document.getElementById('booked-events-section');
+  const bookedEventsList = document.getElementById('booked-events-list');
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -162,19 +205,39 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function renderEventOptions() {
-    if (!eventSelect) return;
+    if (!eventSelect || !selectedService) return;
     const options = ['<option value="">Select an event</option>'];
+    const bookedEventIds = new Set((selectedService.booked_event_ids || []).map(String));
 
     upcomingEvents.forEach(function (event) {
+      const isBooked = bookedEventIds.has(String(event.id));
+      const label = (isBooked ? '✓ ' : '') + event.title + ' - ' + event.event_date_label;
       options.push(
-        '<option value="' + event.id + '">' +
-        event.title + ' - ' + event.event_date_label +
-        '</option>'
+        '<option value="' + event.id + '">' + label + '</option>'
       );
     });
 
     eventSelect.innerHTML = options.join('');
     eventSelect.value = String(selectedEventId || '');
+  }
+
+  function renderBookedEvents() {
+    if (!bookedEventsList || !selectedService) return;
+    const bookedEventIds = new Set((selectedService.booked_event_ids || []).map(String));
+    const bookedEvents = upcomingEvents.filter(function (event) {
+      return bookedEventIds.has(String(event.id));
+    });
+
+    bookedEventsList.innerHTML = bookedEvents.map(function (event) {
+      return '<div style="padding: 0.5rem; background-color: #fff; border-radius: 3px; border-left: 3px solid #4CAF50;">' +
+        '<strong>✓ ' + event.title + '</strong>' +
+        '<p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: #666;">' + event.event_date_label + '</p>' +
+        '</div>';
+    }).join('');
+
+    if (bookedEventsSection) {
+      bookedEventsSection.style.display = bookedEvents.length > 0 ? 'block' : 'none';
+    }
   }
 
   function applyServiceData(service) {
@@ -188,7 +251,31 @@ document.addEventListener('DOMContentLoaded', function () {
     if (icon) icon.textContent = iconMap[service.service_type] || iconMap.other;
     if (bookingServiceId) bookingServiceId.value = String(service.id);
 
+    // Fetch and display rating in modal
+    fetch('/services/' + service.id + '/rating/')
+      .then(function (response) {
+        if (!response.ok) throw new Error('Network response failed');
+        return response.json();
+      })
+      .then(function (data) {
+        const ratingCount = Number(data.rating_count || 0);
+
+        if (ratingContainer) {
+          if (ratingStarsEl) ratingStarsEl.textContent = renderStars(data.avg_rating, ratingCount);
+          if (ratingCountEl) {
+            ratingCountEl.textContent = ratingCount > 0 && data.avg_rating
+              ? '(' + data.avg_rating.toFixed(1) + '★, ' + ratingCount + ' rating' + (ratingCount !== 1 ? 's' : '') + ')'
+              : 'No ratings yet';
+          }
+          ratingContainer.style.display = 'block';
+        }
+      })
+      .catch(function () {
+        if (ratingContainer) ratingContainer.style.display = 'none';
+      });
+
     renderEventOptions();
+    renderBookedEvents();
     renderCalendar();
     updateBookingState();
     window.openModal(modal);
@@ -223,6 +310,11 @@ document.addEventListener('DOMContentLoaded', function () {
   buildMonthOptions();
   buildYearOptions();
   renderCalendar();
+
+  // Fetch ratings for all services
+  servicesData.forEach(function (service) {
+    fetchAndDisplayRating(service.id);
+  });
 
   if (monthSelect) {
     monthSelect.addEventListener('change', function () {

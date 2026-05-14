@@ -258,6 +258,80 @@
   padding: 0 0 28px 0 !important;
 }
 
+/* Disabled button styles with tooltips */
+.btn-disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Danger button style */
+.btn-danger {
+  background-color: #dc2626;
+  color: white;
+  border: none;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background-color: #b91c1c;
+}
+
+.btn-danger:active:not(:disabled) {
+  background-color: #991b1b;
+}
+
+/* Tooltip styling - works with HTML title attribute */
+.btn[title]:hover,
+.btn-disabled[title]:hover {
+  position: relative;
+}
+
+/* Tooltip pseudo-element for text */
+.btn[title]:not(:disabled):hover::after,
+.btn-disabled[title]:hover::after {
+  content: attr(title);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(20, 18, 16, 0.95);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  z-index: 1000;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+/* Tooltip arrow */
+.btn[title]:not(:disabled):hover::before,
+.btn-disabled[title]:hover::before {
+  content: '';
+  position: absolute;
+  bottom: calc(100% - 1px);
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: rgba(20, 18, 16, 0.95);
+  z-index: 1000;
+  pointer-events: none;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
 .page-head h1 {
   font-size: 2.4rem;
   letter-spacing: -0.04em;

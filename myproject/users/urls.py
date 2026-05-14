@@ -105,14 +105,17 @@ urlpatterns = [
         name="vendor_delete_account",
     ),
     path("dashboard/<str:role>/", views.dashboard, name="dashboard"),
-    path(
-        "admin/dashboard/", views.admin_dashboard_view, name="admin_dashboard"
-    ),
+    path("admin/dashboard/", views.admin_dashboard_view, name="admin_dashboard"),
     path("admin/users/", views.admin_users_view, name="admin_users"),
     path(
         "admin/users/<int:user_id>/profile/",
         views.admin_user_profile_view,
         name="admin_user_profile",
+    ),
+    path(
+        "admin/users/<int:user_id>/edit/",
+        views.admin_user_edit_view,
+        name="admin_user_edit",
     ),
     path(
         "admin/users/<int:user_id>/update/",
@@ -124,9 +127,7 @@ urlpatterns = [
         views.admin_user_delete_view,
         name="admin_user_delete",
     ),
-    path(
-        "admin/approvals/", views.admin_approvals_view, name="admin_approvals"
-    ),
+    path("admin/approvals/", views.admin_approvals_view, name="admin_approvals"),
     path(
         "admin/approvals/update/",
         views.admin_approval_update_view,

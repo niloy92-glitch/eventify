@@ -41,8 +41,18 @@ urlpatterns = [
     ),
     path("vendor/events/", views.vendor_events_view, name="vendor_events"),
     path(
+        "vendor/events/<int:event_id>/",
+        views.vendor_event_detail_view,
+        name="vendor_event_detail",
+    ),
+    path(
         "vendor/booking-requests/",
         views.vendor_booking_requests_view,
         name="vendor_booking_requests",
+    ),
+    path(
+        "<int:event_id>/complete/",
+        views.event_complete_view,
+        name="event_complete",
     ),
 ]

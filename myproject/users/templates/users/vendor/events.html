@@ -29,7 +29,7 @@
       <tbody>
         {% for booking in approved_events %}
           <tr class="approval-row">
-            <td>{{ booking.event_title }}</td>
+            <td><a href="{% url 'events:vendor_event_detail' booking.event_id %}">{{ booking.event_title }}</a></td>
             <td>{{ booking.service_name }}</td>
             <td>{{ booking.requested_date_label }}</td>
             <td>{{ booking.event_location|default:"TBD" }}</td>

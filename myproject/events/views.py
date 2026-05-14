@@ -1,5 +1,7 @@
 from datetime import timedelta
 from decimal import Decimal
+import json
+from urllib.parse import urlencode
 
 from django.contrib.auth.decorators import login_required
 from django.http import HttpRequest, HttpResponse
@@ -125,10 +127,12 @@ def _serialize_client_event(event) -> dict:
         "title": event.title,
         "event_date": event.event_date.strftime("%Y-%m-%d"),
         "event_date_label": event.event_date.strftime("%A, %B %d, %Y"),
+        "event_time": event.event_time.strftime("%H:%M") if event.event_time else "",
         "venue_name": event.venue_name or "Venue not set",
         "venue_address": event.venue_address or "",
         "has_own_venue": bool(event.has_own_venue),
         "notes": event.notes or "",
+        "completed_at": event.completed_at,
         "payment_method": event.payment_method or "",
         "payment_method_label": payment_choices.get(
             event.payment_method, "Not selected"
@@ -210,6 +214,44 @@ def client_event_detail_view(
         client=request.user,
     )
     selected_event = _serialize_client_event(event)
+    
+    # Pass service rows (same format as displayed in event details) so completion modal shows rating inputs
+    rating_services = []
+    for booking in event.service_requests.select_related('service').all():
+        service = booking.service
+        rating_services.append({
+            'id': service.pk,
+            'name': service.name,
+            'type': service.get_service_type_display(),
+        })
+    modal_target = str(request.GET.get("open", "")).strip().lower()
+    detail_url = reverse("events:client_event_detail", kwargs={"event_id": event.pk})
+    today = timezone.localdate()
+    days_until_event = (event.event_date - today).days
+    
+    # Logic for completion and deletion
+    can_complete_event = today >= event.event_date
+    can_delete_event = days_until_event > 2 or days_until_event < -1
+    
+    # Reason messages for greyed-out buttons
+    complete_reason = None
+    delete_reason = None
+    
+    if not can_complete_event:
+        complete_reason = f"Available on {event.event_date.strftime('%A, %B %d')}"
+    
+    if not can_delete_event:
+        if days_until_event == -1:
+            delete_reason = "Cannot delete events that occurred yesterday"
+        elif days_until_event == 0:
+            delete_reason = "Cannot delete today's events"
+        elif days_until_event == 1:
+            delete_reason = "Cannot delete tomorrow's events"
+        elif days_until_event == 2:
+            delete_reason = "Cannot delete events within 3 days"
+        else:
+            delete_reason = "Cannot delete past events"
+    
     context = client_base_context(request, "my_events")
     context.update(
         {
@@ -218,9 +260,19 @@ def client_event_detail_view(
             "event": selected_event,
             "event_form": EventForm(instance=event),
             "back_url": reverse("events:client_my_events"),
+            "edit_url": f"{detail_url}?{urlencode({'open': 'edit'})}",
+            "complete_url": f"{detail_url}?{urlencode({'open': 'complete'})}",
+            "delete_url": reverse("events:client_event_delete", args=[event.pk]),
+            "open_edit_modal": modal_target == "edit",
+            "open_complete_modal": modal_target == "complete",
+            "can_complete_event": can_complete_event,
+            "can_delete_event": can_delete_event,
+            "complete_reason": complete_reason,
+            "delete_reason": delete_reason,
             "update_url": reverse(
                 "events:client_event_update", args=[event.pk]
             ),
+            "rating_services_json": json.dumps(rating_services),
         }
     )
     return render(request, "users/client/event_detail.html", context)
@@ -432,6 +484,7 @@ def client_event_payment_view(
 
 
 @login_required(login_url="users:login")
+@login_required(login_url="users:login")
 @require_POST
 def client_event_delete_view(
     request: HttpRequest, event_id: int
@@ -441,6 +494,18 @@ def client_event_delete_view(
         return redirect_response
 
     event = get_object_or_404(Event, pk=event_id, client=request.user)
+    
+    # Check if event is within 3 days (cannot delete)
+    today = timezone.localdate()
+    days_until_event = (event.event_date - today).days
+    if days_until_event >= -1 and days_until_event <= 2:  # -1 (today) to 2 (within 3 days)
+        return redirect(
+            add_auth_notice(
+                f"{reverse('events:client_my_events')}?event={event.pk}",
+                "event_delete_restricted",
+            )
+        )
+    
     if event.service_requests.exists():
         return redirect(
             add_auth_notice(
@@ -484,6 +549,64 @@ def vendor_events_view(request: HttpRequest) -> HttpResponse:
 
 @login_required(login_url="users:login")
 @require_GET
+def vendor_event_detail_view(request: HttpRequest, event_id: int) -> HttpResponse:
+    """Display event details for vendor - shows the event and their services for it."""
+    redirect_response = _vendor_access_redirect(request)
+    if redirect_response is not None:
+        return redirect_response
+
+    # Get the event and verify vendor has a service booking for it
+    event = get_object_or_404(
+        Event.objects.prefetch_related(
+            "service_requests__service", "service_requests__vendor"
+        ),
+        pk=event_id,
+    )
+    
+    # Get vendor's services for this event
+    vendor_bookings = event.service_requests.filter(
+        vendor=request.user, status="approved"
+    ).select_related("service")
+    
+    if not vendor_bookings.exists():
+        return redirect("events:vendor_events")
+    
+    # Serialize event details
+    event_data = {
+        "id": event.pk,
+        "title": event.title,
+        "event_date": event.event_date.strftime("%Y-%m-%d"),
+        "event_date_label": event.event_date.strftime("%A, %B %d, %Y"),
+        "event_time": event.event_time.strftime("%H:%M") if event.event_time else "Not specified",
+        "venue_name": event.venue_name or "Venue not set",
+        "venue_address": event.venue_address or "",
+        "notes": event.notes or "",
+        "client_name": event.client.get_full_name() or event.client.email,
+        "client_phone": event.client.phone or "Not provided",
+    }
+    
+    # Serialize vendor's services for this event
+    vendor_services = []
+    for booking in vendor_bookings:
+        vendor_services.append({
+            "service_name": booking.service.name,
+            "service_type": booking.service.get_service_type_display(),
+            "price": f"{booking.quoted_price or booking.price_snapshot or booking.service.price or 0:.2f}",
+            "quote_note": booking.quote_note or "",
+        })
+    
+    context = vendor_base_context(request, "events")
+    context.update({
+        "page_name": f"{event.title} Details",
+        "event": event_data,
+        "vendor_services": vendor_services,
+        "back_url": reverse("events:vendor_events"),
+    })
+    return render(request, "users/vendor/event_detail.html", context)
+
+
+@login_required(login_url="users:login")
+@require_GET
 def vendor_booking_requests_view(request: HttpRequest) -> HttpResponse:
     redirect_response = _vendor_access_redirect(request)
     if redirect_response is not None:
@@ -507,6 +630,38 @@ def _ensure_service_availability(
         )
         dates.append(slot_date.strftime("%Y-%m-%d"))
     return dates
+
+
+# ── Rating System Endpoints ───────────────────────────────────────────────────
+
+@login_required(login_url="users:login")
+@require_POST
+def event_complete_view(request: HttpRequest, event_id: int) -> HttpResponse:
+    """
+    Mark an event as completed. Only the client who owns the event can complete it.
+    Returns JSON response.
+    """
+    from django.http import JsonResponse
+    
+    event = get_object_or_404(Event, pk=event_id)
+    
+    # Only the client who owns the event can mark it as complete
+    if event.client != request.user:
+        return JsonResponse({"error": "Unauthorized"}, status=403)
+    
+    # Event can only be completed from the event date onwards
+    today = timezone.localdate()
+    if today < event.event_date:
+        return JsonResponse(
+            {"error": "Event cannot be completed before its scheduled date"},
+            status=400
+        )
+    
+    # Mark as completed
+    event.completed_at = timezone.now()
+    event.save()
+    
+    return JsonResponse({"status": "success", "message": "Event marked as completed"})
 
 
 def _service_availability_dates(service: Service) -> list[str]:

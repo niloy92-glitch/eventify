@@ -1,3 +1,4 @@
+import json
 import requests
 from urllib.parse import urlencode
 
@@ -798,6 +799,41 @@ def admin_user_profile_view(request: HttpRequest, user_id: int) -> HttpResponse:
 
 @login_required(login_url="users:login")
 @require_POST
+def admin_user_edit_view(request: HttpRequest, user_id: int) -> HttpResponse:
+    """Handle JSON requests to edit user details from profile page."""
+    redirect_response = _admin_access_redirect(request)
+    if redirect_response is not None:
+        return JsonResponse({"error": "Unauthorized"}, status=403)
+
+    user = get_object_or_404(User, pk=user_id, is_superuser=False)
+    
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+    
+    # Update user fields
+    if data.get("first_name"):
+        user.first_name = data["first_name"]
+    if data.get("last_name"):
+        user.last_name = data["last_name"]
+    if data.get("phone"):
+        user.phone = data["phone"]
+    if data.get("address"):
+        user.address = data["address"]
+    if data.get("company_name") and user.role == "vendor":
+        user.company_name = data["company_name"]
+    
+    try:
+        user.full_clean()
+        user.save()
+        return JsonResponse({"success": True, "message": "User updated successfully"})
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=400)
+
+
+@login_required(login_url="users:login")
+@require_POST
 def admin_user_update_view(request: HttpRequest, user_id: int) -> HttpResponse:
     redirect_response = _admin_access_redirect(request)
     if redirect_response is not None:
@@ -895,7 +931,7 @@ def admin_approval_update_view(request: HttpRequest) -> HttpResponse:
     request_id = str(request.POST.get("request_id", "")).strip()
 
     redirect_params = {
-        "filter": str(request.POST.get("filter", "all")).strip() or "all",
+        "filter": str(request.POST.get("filter", "pending")).strip() or "pending",
         "from_date": str(request.POST.get("from_date", "")).strip(),
         "to_date": str(request.POST.get("to_date", "")).strip(),
     }
@@ -906,7 +942,7 @@ def admin_approval_update_view(request: HttpRequest) -> HttpResponse:
 
     if (
         decision not in {"approve", "reject"}
-        or request_type not in {"vendor", "service"}
+        or request_type not in {"vendor", "service", "rating"}
         or not request_id.isdigit()
     ):
         return redirect(
@@ -933,7 +969,7 @@ def admin_approval_update_view(request: HttpRequest) -> HttpResponse:
             category="approval",
             link_url=role_dashboard_url(vendor.role),
         )
-    else:
+    elif request_type == "service":
         approval_request = get_object_or_404(
             ApprovalRequest, pk=int(request_id), request_type="service"
         )
@@ -953,6 +989,34 @@ def admin_approval_update_view(request: HttpRequest) -> HttpResponse:
             category="approval",
             link_url=reverse("services:vendor_services"),
         )
+    else:  # request_type == "rating"
+        try:
+            from services.models import ServiceRating
+
+            rating = get_object_or_404(ServiceRating, pk=int(request_id))
+            
+            if decision == "approve":
+                rating.status = "approved"
+                rating.approved_at = timezone.now()
+                rating.approved_by = request.user
+                rating.save(update_fields=["status", "approved_at", "approved_by"])
+                approval_label = "approved"
+            else:  # reject
+                # Delete rejected ratings so client can rate again
+                rating.delete()
+                approval_label = "rejected"
+            
+            # Notify vendor about rating decision
+            notify_user(
+                rating.service.vendor,
+                f"Service rating {approval_label}",
+                f"A {rating.stars}★ rating for '{rating.service.name}' was {approval_label}.",
+                category="approval",
+                link_url=reverse("services:vendor_services"),
+            )
+        except Exception:
+            # ServiceRating model not available or not found
+            pass
 
     return redirect(
         add_auth_notice(redirect_url, AUTH_MESSAGE_KEYS["approval_updated"])

@@ -89,7 +89,28 @@ def vendor_service_list(request: HttpRequest) -> HttpResponse:
 
     context = vendor_base_context(request, "services")
     services = Service.objects.filter(vendor=request.user)
-    context.update({"services": services, "page_name": "Services"})
+    
+    # Prefetch approval requests to avoid N+1 queries
+    services = services.prefetch_related(
+        "approval_requests"
+    )
+    
+    # Add approval status to each service
+    services_with_status = []
+    for service in services:
+        approval_request = service.approval_requests.first()
+        approval_status = None
+        if approval_request:
+            approval_status = approval_request.status
+        services_with_status.append({
+            "service": service,
+            "approval_status": approval_status,
+        })
+    
+    context.update({
+        "services": services_with_status,
+        "page_name": "Services"
+    })
     return render(request, "services/vendor/list.html", context)
 
 
@@ -166,6 +187,42 @@ def vendor_service_delete(request: HttpRequest, pk: int) -> HttpResponse:
 
 @login_required(login_url="users:login")
 @require_GET
+def vendor_service_profile(request: HttpRequest, pk: int) -> HttpResponse:
+    """Display service profile/details page for vendor."""
+    service = get_object_or_404(Service, pk=pk, vendor=request.user)
+    
+    # Get all events that have booked this service (approved bookings)
+    booked_events = EventServiceBooking.objects.filter(
+        service=service,
+        status="approved"
+    ).select_related("event").values(
+        "event_id", "event__title", "event__event_date"
+    ).order_by("-event__event_date")
+
+    from services.rating_utils import (
+        get_service_avg_rating,
+        get_service_rating_count,
+        get_vendor_avg_rating,
+    )
+
+    service_avg_rating = get_service_avg_rating(service.pk)
+    service_rating_count = get_service_rating_count(service.pk)
+    vendor_avg_rating = get_vendor_avg_rating(request.user.pk)
+    
+    context = vendor_base_context(request, "services")
+    context.update({
+        "service": service,
+        "booked_events": booked_events,
+        "service_avg_rating": service_avg_rating,
+        "service_rating_count": service_rating_count,
+        "vendor_avg_rating": vendor_avg_rating,
+        "page_name": service.name,
+    })
+    return render(request, "services/vendor/profile.html", context)
+
+
+@login_required(login_url="users:login")
+@require_GET
 def services_home(request: HttpRequest) -> HttpResponse:
     # show all approved services to clients
     context = client_base_context(request, "home")
@@ -178,6 +235,16 @@ def services_home(request: HttpRequest) -> HttpResponse:
     for service in services:
         availability_dates = _service_availability_dates(service)
         service.availability_dates_json = availability_dates
+        
+        # Get events for the current client that have booked this service
+        booked_event_ids = list(
+            EventServiceBooking.objects.filter(
+                service=service,
+                event__client=request.user,
+                status__in=["quoted", "approved"]
+            ).values_list("event_id", flat=True)
+        )
+        
         services_payload.append(
             {
                 "id": service.pk,
@@ -191,6 +258,7 @@ def services_home(request: HttpRequest) -> HttpResponse:
                     str(service.price) if service.price is not None else ""
                 ),
                 "availability_dates": availability_dates,
+                "booked_event_ids": booked_event_ids,
             }
         )
 
@@ -408,6 +476,107 @@ def vendor_booking_request_update(request: HttpRequest) -> HttpResponse:
                 AUTH_MESSAGE_KEYS["quote_sent"],
             )
         )
+
+
+# ── Rating System Endpoints ───────────────────────────────────────────────────
+
+@login_required(login_url="users:login")
+@require_POST
+def service_rate_view(request: HttpRequest, service_id: int) -> HttpResponse:
+    """
+    Submit a rating for a service for a specific event.
+    Only the client who attended the event can rate.
+    Returns JSON response.
+    """
+    from django.http import JsonResponse
+    import json
+    from services.models import ServiceRating
+    from services.rating_utils import create_service_rating
+    
+    service = get_object_or_404(Service, pk=service_id)
+    
+    try:
+        data = json.loads(request.body)
+        event_id = data.get("event_id")
+        stars = data.get("stars")
+        
+        if not event_id or stars is None:
+            return JsonResponse(
+                {"error": "Missing event_id or stars"},
+                status=400
+            )
+        
+        event = get_object_or_404(Event, pk=event_id)
+        
+        # Verify the client attended this event
+        if event.client != request.user:
+            return JsonResponse({"error": "Unauthorized"}, status=403)
+        
+        # Verify the service was booked for this event
+        booking = EventServiceBooking.objects.filter(
+            event=event,
+            service=service,
+            status="approved"
+        ).first()
+        
+        if not booking:
+            return JsonResponse(
+                {"error": "Service was not booked for this event"},
+                status=400
+            )
+        
+        # Create the rating
+        try:
+            rating = create_service_rating(
+                client=request.user,
+                service=service,
+                event=event,
+                stars=int(stars)
+            )
+            return JsonResponse({
+                "status": "success",
+                "message": "Rating submitted for admin approval",
+                "rating_id": rating.id
+            })
+        except ValueError as e:
+            return JsonResponse(
+                {"error": str(e)},
+                status=400
+            )
+        
+    except json.JSONDecodeError:
+        return JsonResponse(
+            {"error": "Invalid JSON"},
+            status=400
+        )
+
+
+@login_required(login_url="users:login")
+@require_GET
+def service_rating_view(request: HttpRequest, service_id: int) -> HttpResponse:
+    """
+    Get the average rating for a service (public endpoint).
+    Returns JSON response with avg_rating, count, and vendor_avg.
+    """
+    from django.http import JsonResponse
+    from services.rating_utils import (
+        get_service_avg_rating,
+        get_service_rating_count,
+        get_vendor_avg_rating,
+    )
+    
+    service = get_object_or_404(Service, pk=service_id)
+    
+    avg_rating = get_service_avg_rating(service_id)
+    count = get_service_rating_count(service_id)
+    vendor_avg = get_vendor_avg_rating(service.vendor_id)
+    
+    return JsonResponse({
+        "service_id": service_id,
+        "avg_rating": float(avg_rating) if avg_rating else None,
+        "rating_count": count,
+        "vendor_avg_rating": float(vendor_avg) if vendor_avg else None,
+    })
 
     booking.status = "approved" if decision == "approve" else "rejected"
     booking.responded_at = timezone.now()

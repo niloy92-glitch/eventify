@@ -238,8 +238,9 @@
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(144px, 168px));
   gap: 10px;
+  justify-content: start;
 }
 
 .stat-card {
@@ -616,6 +617,9 @@
   padding: 20px;
   display: grid;
   gap: 10px;
+  /* ensure panels scroll on small screens to avoid content being hidden */
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
 }
 
 .modal-panel h2 {

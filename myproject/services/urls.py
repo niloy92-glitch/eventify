@@ -11,6 +11,11 @@ urlpatterns = [
         name="vendor_service_create",
     ),
     path(
+        "vendor/<int:pk>/",
+        views.vendor_service_profile,
+        name="vendor_service_profile",
+    ),
+    path(
         "vendor/<int:pk>/edit/",
         views.vendor_service_edit,
         name="vendor_service_edit",
@@ -26,5 +31,15 @@ urlpatterns = [
         "vendor/booking-request/update/",
         views.vendor_booking_request_update,
         name="vendor_booking_request_update",
+    ),
+    path(
+        "<int:service_id>/rate/",
+        views.service_rate_view,
+        name="service_rate",
+    ),
+    path(
+        "<int:service_id>/rating/",
+        views.service_rating_view,
+        name="service_rating",
     ),
 ]

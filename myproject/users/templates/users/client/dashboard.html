@@ -11,7 +11,7 @@
     </div>
     <div style="text-align: right;">
       <p class="muted">{{ today_label }}</p>
-      <p class="muted">Special day: {{ special_day_label }}</p>
+      <p class="muted" id="dashboard-clock">--:--:--</p>
       <button type="button" class="btn btn-primary" data-open-create-event style="margin-top: 10px;">Create Event</button>
     </div>
   </div>
@@ -62,7 +62,7 @@
       <tbody>
         {% for event in upcoming_events %}
           <tr>
-            <td>{{ event.name }}</td>
+            <td><a href="{% url 'events:client_event_detail' event.id %}">{{ event.name }}</a></td>
             <td>{{ event.date }}</td>
             <td>{{ event.location }}</td>
           </tr>
