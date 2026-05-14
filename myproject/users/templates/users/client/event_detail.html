@@ -17,7 +17,24 @@
       <p class="muted">{{ selected_event.event_date_label }}</p>
     </div>
     <div class="row-between event-detail-actions-top">
-      <button type="button" class="btn btn-primary" data-open-event-edit>Edit Event</button>
+      <a class="btn btn-primary" href="{{ edit_url }}" data-open-event-edit>Edit Event</a>
+      {% if not selected_event.completed_at %}
+        {% if can_complete_event %}
+          <button type="button" class="btn btn-primary" id="complete-event-btn">Complete Event</button>
+        {% else %}
+          <button type="button" class="btn btn-primary btn-disabled" disabled title="{{ complete_reason }}">Complete Event</button>
+        {% endif %}
+      {% else %}
+        <span class="badge success-badge">Completed on {{ selected_event.completed_at|date:"M d, Y" }}</span>
+      {% endif %}
+      {% if can_delete_event %}
+        <form method="post" action="{{ delete_url }}" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this event?');">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-danger">Delete Event</button>
+        </form>
+      {% else %}
+        <button type="button" class="btn btn-danger btn-disabled" disabled title="{{ delete_reason }}">Delete Event</button>
+      {% endif %}
       <a class="btn" href="{{ back_url }}">Back to My Events</a>
     </div>
   </div>
@@ -28,6 +45,10 @@
     <section class="card event-detail-card">
       <h3>Event Snapshot</h3>
       <div class="event-detail-meta">
+        <p><span>Date</span> <strong>{{ selected_event.event_date_label }}</strong></p>
+        {% if selected_event.event_time %}
+          <p><span>Time</span> <strong>{{ selected_event.event_time }}</strong></p>
+        {% endif %}
         <p><span>Venue</span> <strong>{{ selected_event.venue_name }}</strong></p>
         <p><span>Address</span> <strong>{{ selected_event.venue_address|default:"—" }}</strong></p>
         <p><span>Own venue</span> <strong>{% if selected_event.has_own_venue %}Yes{% else %}No{% endif %}</strong></p>
@@ -89,79 +110,72 @@
   </div>
 </section>
 
-<div class="modal" id="event-edit-modal" aria-hidden="true">
-  <div class="modal-card event-edit-modal-card" role="dialog" aria-modal="true" aria-labelledby="event-edit-modal-title">
-    <div class="event-edit-modal-header">
-      <div class="event-edit-modal-heading">
-        <h3 id="event-edit-modal-title">Edit Event</h3>
-        <p class="muted event-edit-intro">Update the event details and save your changes.</p>
+{% if open_edit_modal %}
+  <div class="modal open" id="event-edit-modal" aria-hidden="false">
+    <div class="modal-card event-edit-modal-card" role="dialog" aria-modal="true" aria-labelledby="event-edit-modal-title">
+      <div class="event-edit-modal-header">
+        <div class="event-edit-modal-heading">
+          <h3 id="event-edit-modal-title">Edit Event</h3>
+          <p class="muted event-edit-intro">Update the event details and save your changes.</p>
+        </div>
+        <button type="button" class="service-detail-close" data-close-modal="event-edit-modal" aria-label="Close">×</button>
       </div>
-      <button type="button" class="service-detail-close" data-close-modal="event-edit-modal" aria-label="Close">×</button>
+
+      <form method="post" action="{{ update_url }}" class="event-edit-form">
+        {% csrf_token %}
+        <div class="form-field">
+          <label class="form-field-label" for="client-event-title">Title</label>
+          {{ event_form.title }}
+        </div>
+
+        <div class="form-field">
+          <label class="form-field-label" for="client-event-date">Event date</label>
+          {{ event_form.event_date }}
+        </div>
+
+        <div class="form-field">
+          <label class="form-field-label" for="client-event-venue-name">Venue name</label>
+          {{ event_form.venue_name }}
+        </div>
+
+        <div class="form-field">
+          <label class="form-field-label" for="client-event-venue-address">Venue address</label>
+          {{ event_form.venue_address }}
+        </div>
+
+        <div class="form-field">
+          <label class="form-field-label" for="client-event-payment-method">Payment method</label>
+          {{ event_form.payment_method }}
+        </div>
+
+        <label class="event-edit-checkbox-row" for="client-event-own-venue">
+          {{ event_form.has_own_venue }}
+          <span>
+            <strong>Own venue</strong>
+            <small>Enable this if you will use your own venue instead of renting one.</small>
+          </span>
+        </label>
+
+        <div class="form-field event-edit-notes-field">
+          <label class="form-field-label" for="client-event-notes">Notes</label>
+          {{ event_form.notes }}
+        </div>
+
+        {% if event_form.errors %}
+          <div class="form-error event-edit-errors">Please review the highlighted fields and try again.</div>
+        {% endif %}
+
+        <div class="modal-actions event-edit-actions">
+          <button type="button" class="btn" data-close-modal="event-edit-modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Changes</button>
+        </div>
+      </form>
     </div>
-
-    <form method="post" action="{{ update_url }}" class="event-edit-form">
-      {% csrf_token %}
-      <div class="form-field">
-        <label class="form-field-label" for="client-event-title">Title</label>
-        {{ event_form.title }}
-      </div>
-
-      <div class="form-field">
-        <label class="form-field-label" for="client-event-date">Event date</label>
-        {{ event_form.event_date }}
-      </div>
-
-      <div class="form-field">
-        <label class="form-field-label" for="client-event-venue-name">Venue name</label>
-        {{ event_form.venue_name }}
-      </div>
-
-      <div class="form-field">
-        <label class="form-field-label" for="client-event-venue-address">Venue address</label>
-        {{ event_form.venue_address }}
-      </div>
-
-      <div class="form-field">
-        <label class="form-field-label" for="client-event-payment-method">Payment method</label>
-        {{ event_form.payment_method }}
-      </div>
-
-      <label class="event-edit-checkbox-row" for="client-event-own-venue">
-        {{ event_form.has_own_venue }}
-        <span>
-          <strong>Own venue</strong>
-          <small>Enable this if you will use your own venue instead of renting one.</small>
-        </span>
-      </label>
-
-      <div class="form-field event-edit-notes-field">
-        <label class="form-field-label" for="client-event-notes">Notes</label>
-        {{ event_form.notes }}
-      </div>
-
-      {% if event_form.errors %}
-        <div class="form-error event-edit-errors">Please review the highlighted fields and try again.</div>
-      {% endif %}
-
-      <div class="modal-actions event-edit-actions">
-        <button type="button" class="btn" data-close-modal="event-edit-modal">Cancel</button>
-        <button type="submit" class="btn btn-primary">Save Changes</button>
-      </div>
-    </form>
   </div>
-</div>
+{% endif %}
 
 <script>
   document.addEventListener("DOMContentLoaded", function () {
-    const openButton = document.querySelector("[data-open-event-edit]");
-    const modal = document.getElementById("event-edit-modal");
-
-    if (!openButton || !modal || !window.openModal) return;
-
-    openButton.addEventListener("click", function () {
-      window.openModal(modal);
-    });
-
     const ownVenueCheck = document.getElementById("client-event-own-venue");
     const venueName = document.getElementById("client-event-venue-name");
     const venueAddress = document.getElementById("client-event-venue-address");
@@ -181,6 +195,96 @@
       ownVenueCheck.addEventListener("change", toggleVenueFields);
       toggleVenueFields();
     }
+
+    function openModal(modal) {
+      if (!modal) return;
+      modal.classList.add("open");
+      modal.setAttribute("aria-hidden", "false");
+      modal.removeAttribute("inert");
+    }
+
+    function closeModal(modal) {
+      if (!modal) return;
+      modal.classList.remove("open");
+      modal.setAttribute("aria-hidden", "true");
+      modal.setAttribute("inert", "inert");
+      document.activeElement?.blur();
+    }
+
+    // Initialize modals to start hidden
+    const editModal = document.getElementById("event-edit-modal");
+    if (editModal) {
+      editModal.classList.remove("open");
+      editModal.setAttribute("aria-hidden", "true");
+      editModal.setAttribute("inert", "inert");
+    }
+
+    // Close modal when clicking close buttons
+    document.querySelectorAll("[data-close-modal]").forEach(function (button) {
+      const modalId = button.getAttribute("data-close-modal");
+      if (!modalId) return;
+      const targetModal = document.getElementById(modalId);
+      button.addEventListener("click", function (e) {
+        e.preventDefault();
+        closeModal(targetModal);
+      });
+    });
+
+    // Open modal when clicking edit button
+    document.querySelectorAll("[data-open-event-edit]").forEach(function (button) {
+      button.addEventListener("click", function (e) {
+        e.preventDefault();
+        if (editModal) {
+          openModal(editModal);
+        }
+      });
+    });
+
+    // Close modal when clicking outside (on overlay)
+    document.querySelectorAll(".modal").forEach(function (modal) {
+      modal.addEventListener("click", function (e) {
+        if (e.target === modal) {
+          closeModal(modal);
+        }
+      });
+    });
+
+    // Handle form submission for event edit
+    const eventForm = editModal?.querySelector("form");
+    if (eventForm) {
+      eventForm.addEventListener("submit", function (e) {
+        // Let the form submit naturally, then close the modal
+        setTimeout(function () {
+          closeModal(editModal);
+        }, 100);
+      });
+    }
+
+    // Handle complete event button
+    const completeBtn = document.getElementById("complete-event-btn");
+    if (completeBtn) {
+      completeBtn.addEventListener("click", function (e) {
+        e.preventDefault();
+        const eventId = Number({{ selected_event.id }});
+        const eventTitle = "{{ selected_event.title|escapejs }}";
+        const eventDate = "{{ selected_event.event_date|escapejs }}";
+        const services = {{ rating_services_json|safe }};
+
+        if (window.eventCompletionModal && typeof window.eventCompletionModal.open === "function") {
+          window.eventCompletionModal.open(eventId, eventTitle, eventDate, Array.isArray(services) ? services : []);
+        } else {
+          window.__openEventCompletionModal = {
+            eventId: eventId,
+            eventTitle: eventTitle,
+            eventDate: eventDate,
+            services: Array.isArray(services) ? services : [],
+          };
+        }
+      });
+    }
   });
 </script>
+
+{% include 'users/client/components/event_completion_modal_clean.html' %}
+<script src="{% static 'users/js/event_completion.js' %}"></script>
 {% endblock %}

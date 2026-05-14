@@ -1,0 +1,138 @@
+{% extends 'users/vendor/base.html' %}
+{% load static %}
+
+{% block title %}{{ page_name }}{% endblock %}
+
+{% block vendor_content %}
+<section class="card page-head">
+  <div class="row-between">
+    <div>
+      <h1>{{ event.title }}</h1>
+      <p class="muted">Event Details</p>
+    </div>
+    <div>
+      <a class="btn" href="{{ back_url }}">Back</a>
+    </div>
+  </div>
+</section>
+
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem;">
+  <!-- Event Details -->
+  <section class="card">
+    <h2>Event Information</h2>
+    
+    <div class="detail-row">
+      <span class="label">Date</span>
+      <span class="value">{{ event.event_date_label }}</span>
+    </div>
+    
+    <div class="detail-row">
+      <span class="label">Time</span>
+      <span class="value">{{ event.event_time }}</span>
+    </div>
+    
+    <div class="detail-row">
+      <span class="label">Venue</span>
+      <span class="value">{{ event.venue_name }}</span>
+    </div>
+    
+    {% if event.venue_address %}
+      <div class="detail-row">
+        <span class="label">Address</span>
+        <span class="value">{{ event.venue_address }}</span>
+      </div>
+    {% endif %}
+    
+    {% if event.notes %}
+      <div class="detail-section">
+        <h3>Event Notes</h3>
+        <p>{{ event.notes }}</p>
+      </div>
+    {% endif %}
+  </section>
+
+  <!-- Client Information & Your Services -->
+  <section class="card">
+    <h2>Client Information</h2>
+    
+    <div class="detail-row">
+      <span class="label">Name</span>
+      <span class="value">{{ event.client_name }}</span>
+    </div>
+    
+    <div class="detail-row">
+      <span class="label">Phone</span>
+      <span class="value">{{ event.client_phone }}</span>
+    </div>
+  </section>
+</div>
+
+<!-- Your Services for This Event -->
+<section class="card" style="margin-top: 2rem;">
+  <h2>Your Services</h2>
+  
+  {% if vendor_services %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Service</th>
+            <th>Type</th>
+            <th>Price (BDT)</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for service in vendor_services %}
+            <tr>
+              <td>{{ service.service_name }}</td>
+              <td>{{ service.service_type }}</td>
+              <td>{{ service.price }}</td>
+              <td>{{ service.quote_note|truncatewords:10 }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="muted">No services for this event.</p>
+  {% endif %}
+</section>
+
+<style>
+  .detail-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 1rem 0;
+    border-bottom: 1px solid #e0e0e0;
+  }
+  
+  .detail-row:last-child {
+    border-bottom: none;
+  }
+  
+  .detail-row .label {
+    font-weight: 600;
+    color: #555;
+  }
+  
+  .detail-row .value {
+    color: #333;
+  }
+  
+  .detail-section {
+    margin-top: 1rem;
+  }
+  
+  .detail-section h3 {
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+    color: #555;
+  }
+  
+  .detail-section p {
+    color: #666;
+    line-height: 1.6;
+  }
+</style>
+{% endblock %}

@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import ApprovalRequest, Service, ServiceAvailabilitySlot
+from .models import ApprovalRequest, Service, ServiceAvailabilitySlot, ServiceRating
 
 
 @admin.register(Service)
@@ -55,3 +55,25 @@ class ServiceAvailabilitySlotAdmin(admin.ModelAdmin):
         "service__vendor__company_name",
     )
     ordering = ("available_date",)
+
+
+@admin.register(ServiceRating)
+class ServiceRatingAdmin(admin.ModelAdmin):
+    list_display = (
+        "service",
+        "client",
+        "stars",
+        "status",
+        "created_at",
+        "approved_by",
+    )
+    list_filter = ("status", "stars", "created_at")
+    search_fields = (
+        "service__name",
+        "service__vendor__email",
+        "client__email",
+        "client__first_name",
+        "client__last_name",
+    )
+    readonly_fields = ("created_at", "approved_at", "approved_by")
+    ordering = ("-created_at",)

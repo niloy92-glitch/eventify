@@ -15,4 +15,8 @@
   </h3>
   <p class="muted">{{ svc.vendor.company_name }}</p>
   <p class="muted">{{ svc.get_service_type_display }}</p>
+  <div class="service-rating-display">
+    <span class="rating-stars" id="rating-stars-{{ svc.pk }}">☆☆☆☆☆</span>
+    <span class="rating-count muted" id="rating-count-{{ svc.pk }}">No ratings yet</span>
+  </div>
 </div>

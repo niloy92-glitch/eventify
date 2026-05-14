@@ -1,0 +1,57 @@
+<div class="modal" id="event-completion-modal" aria-hidden="true" hidden>
+  <div class="modal-panel event-completion-panel" role="dialog" aria-modal="true" aria-labelledby="completion-modal-title">
+    <div class="row-between" style="gap: 12px; align-items: flex-start;">
+      <div>
+        <p class="event-card-kicker">Complete Event</p>
+        <h2 id="completion-modal-title">Mark this event as completed</h2>
+        <p class="muted" id="completion-event-title"></p>
+        <p class="muted" id="completion-event-date"></p>
+      </div>
+      <button type="button" class="service-detail-close modal-close" aria-label="Close">×</button>
+    </div>
+
+    <form id="event-completion-form" method="post" action="">
+      {% csrf_token %}
+      <input type="hidden" id="event-id" name="event_id" />
+
+      <div class="event-completion-note card" style="padding: 12px; margin: 16px 0;">
+        <p class="muted" style="margin: 0;">Select a star rating for each booked service. Ratings are sent for admin approval after the event is marked complete.</p>
+      </div>
+
+      <div id="services-rating-list" class="event-completion-services"></div>
+
+      <template id="service-rating-template">
+        <section class="card event-rating-card" style="padding: 14px;">
+          <div class="row-between" style="align-items: flex-start; gap: 12px; margin-bottom: 12px;">
+            <div>
+              <h3 class="service-rating-name" style="margin: 0;"></h3>
+              <p class="muted service-rating-type" style="margin: 0;"></p>
+            </div>
+            <span class="star-display muted">Choose stars</span>
+          </div>
+
+          <fieldset class="star-rating" data-service-id="">
+            <legend class="sr-only">Rate service</legend>
+            <div class="star-rating-inputs">
+              <input type="radio" id="star-5" value="5" name="rating" />
+              <label class="star-label" for="star-5">★</label>
+              <input type="radio" id="star-4" value="4" name="rating" />
+              <label class="star-label" for="star-4">★</label>
+              <input type="radio" id="star-3" value="3" name="rating" />
+              <label class="star-label" for="star-3">★</label>
+              <input type="radio" id="star-2" value="2" name="rating" />
+              <label class="star-label" for="star-2">★</label>
+              <input type="radio" id="star-1" value="1" name="rating" />
+              <label class="star-label" for="star-1">★</label>
+            </div>
+          </fieldset>
+        </section>
+      </template>
+
+      <div class="modal-actions">
+        <button type="button" class="btn modal-close-btn">Cancel</button>
+        <button type="submit" class="btn btn-primary">Complete Event</button>
+      </div>
+    </form>
+  </div>
+</div>

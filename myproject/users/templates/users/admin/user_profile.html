@@ -16,6 +16,7 @@
       {% else %}
         <span class="btn danger-btn" style="pointer-events: none; padding: 6px 12px; font-size: 12px; height: auto;">Unverified</span>
       {% endif %}
+      <button type="button" class="btn btn-primary" id="edit-user-btn" style="margin-left: 8px;">Edit</button>
     </div>
   </div>
 </section>
@@ -87,6 +88,53 @@
   </section>
 </div>
 
+<!-- Edit User Modal -->
+<div class="modal" id="edit-user-modal" aria-hidden="true">
+  <div class="modal-panel" style="max-width: 500px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <h2>Edit User Details</h2>
+      <button type="button" class="service-detail-close" data-close-modal="edit-user-modal" aria-label="Close">×</button>
+    </div>
+
+    <form id="edit-user-form" method="post">
+      {% csrf_token %}
+      <input type="hidden" name="user_id" value="{{ target_user.id }}" />
+
+      <div class="form-field">
+        <label for="edit-first-name">First Name</label>
+        <input type="text" id="edit-first-name" name="first_name" value="{{ target_user.first_name }}" />
+      </div>
+
+      <div class="form-field">
+        <label for="edit-last-name">Last Name</label>
+        <input type="text" id="edit-last-name" name="last_name" value="{{ target_user.last_name }}" />
+      </div>
+
+      <div class="form-field">
+        <label for="edit-phone">Phone</label>
+        <input type="text" id="edit-phone" name="phone" value="{{ target_user.phone|default:'' }}" />
+      </div>
+
+      <div class="form-field">
+        <label for="edit-address">Address</label>
+        <textarea id="edit-address" name="address">{{ target_user.address|default:'' }}</textarea>
+      </div>
+
+      {% if target_user.role == 'vendor' %}
+        <div class="form-field">
+          <label for="edit-company">Company Name</label>
+          <input type="text" id="edit-company" name="company_name" value="{{ target_user.company_name|default:'' }}" />
+        </div>
+      {% endif %}
+
+      <div class="modal-actions">
+        <button type="button" class="btn" data-close-modal="edit-user-modal">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <!-- Modal for Events on a specific date -->
 <div class="modal" id="events-modal" aria-hidden="true">
   <div class="modal-panel">
@@ -97,6 +145,55 @@
     </div>
   </div>
 </div>
+
+<script>
+document.getElementById('edit-user-btn').addEventListener('click', function() {
+  window.openModal(document.getElementById('edit-user-modal'));
+});
+
+document.getElementById('edit-user-form').addEventListener('submit', function(e) {
+  e.preventDefault();
+  
+  const formData = new FormData(this);
+  
+  fetch("{% url 'users:admin_user_edit' target_user.id %}", {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+    },
+    body: JSON.stringify({
+      first_name: formData.get('first_name'),
+      last_name: formData.get('last_name'),
+      phone: formData.get('phone'),
+      address: formData.get('address'),
+      company_name: formData.get('company_name')
+    })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      // Close modal
+      window.closeModal(document.getElementById('edit-user-modal'));
+      // Reload page
+      window.location.reload();
+    } else {
+      alert('Error: ' + (data.error || 'Unknown error'));
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    alert('An error occurred while saving changes.');
+  });
+});
+
+// Close modal on background click
+document.getElementById('edit-user-modal').addEventListener('click', function(e) {
+  if (e.target === this) {
+    window.closeModal(this);
+  }
+});
+</script>
 {% endblock %}
 
 {% block extra_scripts %}

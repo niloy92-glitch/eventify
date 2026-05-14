@@ -87,6 +87,7 @@ AUTH_MESSAGE_KEYS = {
     "event_update_failed": "EVENT_UPDATE_FAILED",
     "event_deleted": "EVENT_DELETED",
     "event_delete_failed": "EVENT_DELETE_FAILED",
+    "event_delete_restricted": "EVENT_DELETE_RESTRICTED",
     "payment_updated": "PAYMENT_UPDATED",
     "payment_update_failed": "PAYMENT_UPDATE_FAILED",
     "booking_requested": "BOOKING_REQUESTED",
@@ -125,6 +126,7 @@ AUTH_MESSAGES = {
     "EVENT_UPDATE_FAILED": ("error", "Event update failed."),
     "EVENT_DELETED": ("success", "Event deleted successfully."),
     "EVENT_DELETE_FAILED": ("error", "Event delete failed."),
+    "EVENT_DELETE_RESTRICTED": ("error", "Cannot delete event within 3 days of the event date."),
     "PAYMENT_UPDATED": ("success", "Payment method saved successfully."),
     "PAYMENT_UPDATE_FAILED": ("error", "Payment method could not be saved."),
     "BOOKING_REQUESTED": ("success", "Service booking request sent."),
@@ -472,72 +474,55 @@ def _serialize_vendor_event(event, date_field_name: str, date_field) -> dict:
 
 def vendor_dashboard_data(request: HttpRequest) -> dict:
     today = timezone.localdate()
-    window_end = today + timedelta(days=7)
     upcoming_events = []
+    seen_event_ids = set()
 
-    model = _vendor_event_model()
-    if model is not None:
-        fields = _concrete_field_map(model)
-        date_field_name, date_field = _vendor_event_field(
-            fields,
-            (
-                "start_datetime",
-                "start_at",
-                "starts_at",
-                "scheduled_for",
-                "event_datetime",
-                "event_date",
-                "date",
-                "starts_on",
-            ),
-        )
-        owner_field_name = _vendor_event_owner_field(fields)
-
-        if date_field_name and owner_field_name:
-            queryset = model._default_manager.all()
-            try:
-                queryset = queryset.filter(**{owner_field_name: request.user})
-            except Exception:
-                try:
-                    queryset = queryset.filter(
-                        **{f"{owner_field_name}_id": request.user.pk}
-                    )
-                except Exception:
-                    queryset = None
-
-            if queryset is not None:
-                if isinstance(date_field, models.DateTimeField):
-                    queryset = queryset.filter(
-                        **{
-                            f"{date_field_name}__date__gte": today,
-                            f"{date_field_name}__date__lte": window_end,
-                        }
-                    )
-                else:
-                    queryset = queryset.filter(
-                        **{
-                            f"{date_field_name}__gte": today,
-                            f"{date_field_name}__lte": window_end,
-                        }
-                    )
-
-                queryset = queryset.order_by(date_field_name)
-                upcoming_events = [
-                    _serialize_vendor_event(event, date_field_name, date_field)
-                    for event in queryset[:6]
-                ]
-
+    # Get upcoming events through EventServiceBooking (vendor's services)
     from events.views import _booking_request_model
+    booking_model = _booking_request_model()
+    
+    if booking_model is not None:
+        try:
+            # Collect unique future events with bookings for this vendor.
+            event_bookings = booking_model.objects.filter(
+                service__vendor=request.user,
+                event__event_date__gte=today,
+            ).select_related("event", "service").order_by(
+                "event__event_date", "event__created_at", "pk"
+            )
+
+            for booking in event_bookings:
+                event = booking.event
+                if event.pk in seen_event_ids:
+                    continue
+                seen_event_ids.add(event.pk)
+                time_label = event.event_time.strftime("%H:%M") if event.event_time else "Time TBD"
+                upcoming_events.append({
+                    "title": event.title,
+                    "date_label": event.event_date.strftime("%A, %B %d, %Y"),
+                    "time_label": time_label,
+                    "location": event.venue_name or "Venue to be confirmed",
+                    "status_label": "Upcoming",
+                    "status_badge": "pending",
+                    "timing_label": "Upcoming event",
+                })
+                if len(upcoming_events) >= 6:
+                    break
+        except Exception:
+            # Fallback to empty list if query fails
+            pass
 
     booking_requests = []
-    booking_model = _booking_request_model()
     if booking_model is not None:
-        queryset = booking_model.objects.select_related(
-            "event", "service", "service__vendor"
-        ).filter(service__vendor=request.user)
-        booking_requests = [
-            _serialize_booking_request(item) for item in queryset[:12]
-        ]
+        try:
+            queryset = booking_model.objects.select_related(
+                "event", "service", "service__vendor"
+            ).filter(service__vendor=request.user)
+            booking_requests = [
+                _serialize_booking_request(item) for item in queryset[:12]
+            ]
+        except Exception:
+            pass
 
         upcoming_count = len(upcoming_events)
 
@@ -571,7 +556,7 @@ def vendor_dashboard_data(request: HttpRequest) -> dict:
             "today_label": today.strftime("%A, %B %d, %Y"),
             "stats": {
                 "services": services_count,
-                "events": upcoming_count,
+                "events": len(seen_event_ids),
                 "messages": messages_count,
                 "bookings": booking_total_count,
             },
@@ -614,7 +599,7 @@ def vendor_base_context(request: HttpRequest, active_menu: str) -> dict:
             "active": active_menu == "dashboard",
         },
         {
-            "label": "Services",
+            "label": "My Services",
             "href": reverse("services:vendor_services"),
             "active": active_menu == "services",
         },
@@ -646,6 +631,7 @@ def vendor_base_context(request: HttpRequest, active_menu: str) -> dict:
 
 
 APPROVAL_FILTERS = {
+    "pending": "Pending",
     "all": "All",
     "allowed": "Allowed",
     "rejected": "Rejected",
@@ -655,9 +641,9 @@ APPROVAL_FILTERS = {
 
 
 def normalize_approval_filter(filter_key: str | None) -> str:
-    normalized = str(filter_key or "all").strip().lower()
+    normalized = str(filter_key or "pending").strip().lower()
     if normalized not in APPROVAL_FILTERS:
-        return "all"
+        return "pending"
     return normalized
 
 
@@ -773,7 +759,7 @@ def client_base_context(request: HttpRequest, active_menu: str) -> dict:
             "active": active_menu == "dashboard",
         },
         {
-            "label": "Home",
+            "label": "Services",
             "href": reverse("services:services_home"),
             "active": active_menu == "home",
         },
@@ -827,6 +813,7 @@ def client_dashboard_data(request: HttpRequest) -> dict:
         for event in upcoming_queryset[:5]:
             upcoming_list.append(
                 {
+                    "id": event.pk,
                     "name": event.title,
                     "date": event.event_date.strftime("%A, %B %d %Y"),
                     "location": event.venue_name or "Venue not set",
@@ -916,6 +903,7 @@ def admin_dashboard_data() -> dict:
     ]
 
     return {
+        "today_label": today.strftime("%A, %B %d, %Y"),
         "stats": {
             "total_users": total_users,
             "vendors": vendors,
@@ -989,6 +977,33 @@ def admin_approvals_data(
         # services app not available or model missing; skip
         pass
 
+    # include service ratings if the services app is present
+    try:
+        from services.models import ServiceRating
+
+        ratings = ServiceRating.objects.select_related(
+            "service", "service__vendor", "client"
+        ).all()
+        for rating in ratings:
+            rows.append(
+                {
+                    "request_type": "rating",
+                    "request_id": rating.pk,
+                    "vendor_name": rating.service.vendor.company_name
+                    or _display_name(rating.service.vendor),
+                    "vendor_approved": True,
+                    "service_name": rating.service.name,
+                    "service_type": f"{rating.stars}★ by {_display_name(rating.client)}",
+                    "status": rating.status,
+                    "status_label": rating.get_status_display(),
+                    "status_badge": approval_status_badge(rating.status),
+                    "created_at_dt": timezone.localtime(rating.created_at),
+                }
+            )
+    except Exception:
+        # services app not available or model missing; skip
+        pass
+
     filtered_rows = []
     for row in rows:
         created_date = row["created_at_dt"].date()
@@ -1006,6 +1021,11 @@ def admin_approvals_data(
         if (
             normalized_filter == "rejected"
             and row["status"] != ApprovalStatusChoices.REJECTED
+        ):
+            continue
+        if (
+            normalized_filter == "pending"
+            and row["status"] != ApprovalStatusChoices.PENDING
         ):
             continue
         if normalized_filter == "vendors" and row["request_type"] != "vendor":

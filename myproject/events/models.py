@@ -16,6 +16,7 @@ class Event(models.Model):
     )
     title = models.CharField(max_length=150)
     event_date = models.DateField()
+    event_time = models.TimeField(null=True, blank=True)
     venue_name = models.CharField(max_length=150, blank=True)
     venue_address = models.TextField(blank=True)
     has_own_venue = models.BooleanField(default=False)
@@ -24,6 +25,7 @@ class Event(models.Model):
         max_length=30, choices=PAYMENT_METHODS, blank=True, default=""
     )
     payment_saved_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

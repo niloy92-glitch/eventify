@@ -6,6 +6,10 @@
         <div>
           <h2 id="service-detail-title">Service Title</h2>
           <p id="service-detail-company" class="service-detail-company">Company</p>
+          <div class="service-detail-rating" id="service-detail-rating" style="display: none; margin-top: 0.25rem;">
+            <span id="service-detail-rating-stars">☆☆☆☆☆</span>
+            <span id="service-detail-rating-count" class="muted" style="margin-left: 0.5rem;">No ratings yet</span>
+          </div>
         </div>
       </div>
       <button type="button" class="service-detail-close" data-close-modal="service-detail-modal" aria-label="Close">×</button>
@@ -33,6 +37,12 @@
             <button type="submit" class="btn btn-primary" id="service-booking-submit" disabled>Book Service</button>
           </form>
           <p class="status-text" id="service-booking-status">Choose an event date that matches an available slot to continue.</p>
+        </div>
+
+        <!-- Booked Events Section -->
+        <div id="booked-events-section" style="display: none; margin-top: 2rem; padding: 1rem; background-color: #f5f5f5; border-radius: 4px;">
+          <h4 style="margin: 0 0 1rem 0; font-size: 0.9rem; color: #555;">Events already booking this service</h4>
+          <div id="booked-events-list" style="display: flex; flex-direction: column; gap: 0.5rem;"></div>
         </div>
 
         <div class="service-calendar-header-row">

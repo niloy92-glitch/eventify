@@ -1,9 +1,15 @@
 {% extends 'users/admin/base.html' %} {% block title %}Admin Dashboard{%endblock %} {% block content %}
 <section class="card page-head">
-  <h1>Dashboard</h1>
-  <p class="muted">
-    A quick overview of users, services, and event performance.
-  </p>
+  <div class="row-between">
+    <div>
+      <h1>Dashboard</h1>
+      <p class="muted">A quick overview of users, services, and event performance.</p>
+    </div>
+    <div style="text-align: right;">
+      <p class="muted">{{ today_label }}</p>
+      <p class="muted" id="dashboard-clock">--:--:--</p>
+    </div>
+  </div>
 </section>
 
 <section class="stats-grid">

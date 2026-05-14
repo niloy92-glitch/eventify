@@ -82,3 +82,50 @@ class ApprovalRequest(models.Model):
 
     def __str__(self) -> str:
         return f"{self.request_type}:{self.service_id} ({self.status})"
+
+
+class ServiceRating(models.Model):
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("approved", "Approved"),
+        ("rejected", "Rejected"),
+    ]
+
+    service = models.ForeignKey(
+        Service, on_delete=models.CASCADE, related_name="ratings"
+    )
+    client = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="service_ratings",
+    )
+    event = models.ForeignKey(
+        "events.Event",
+        on_delete=models.CASCADE,
+        related_name="service_ratings",
+    )
+    stars = models.IntegerField()  # 1-5 stars
+    status = models.CharField(
+        max_length=20, choices=STATUS_CHOICES, default="pending"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    approved_at = models.DateTimeField(null=True, blank=True)
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="approved_ratings",
+    )
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["service", "client", "event"],
+                name="unique_service_rating_per_client_per_event",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.service.name} - {self.stars}★ by {self.client.email}"
