@@ -20,6 +20,8 @@
   </div>
 </section>
 
+{% include 'services/components/service_filters.html' %}
+
 <section class="card">
   <div class="service-grid">
     {% for item in services %}
@@ -32,6 +34,13 @@
         </div>
         <p class="muted">{{ item.service.get_service_type_display }}</p>
         <p class="muted">{% if item.service.price %}BDT {{ item.service.price }}{% else %}Contact{% endif %}</p>
+        <p class="service-mini-rating muted">
+          {% if item.rating_count %}
+            {{ item.avg_rating|floatformat:1 }}★ ({{ item.rating_count }})
+          {% else %}
+            No ratings yet
+          {% endif %}
+        </p>
         <div class="service-actions">
           <a class="btn" href="{% url 'services:vendor_service_edit' item.service.pk %}">Edit</a>
           <form method="post" action="{% url 'services:vendor_service_delete' item.service.pk %}" style="display:inline">
@@ -52,4 +61,6 @@
     {% endfor %}
   </div>
 </section>
+
+{% include 'services/components/service_pagination.html' %}
 {% endblock %}

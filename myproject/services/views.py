@@ -1,6 +1,8 @@
 from datetime import timedelta
 from decimal import Decimal, InvalidOperation
 
+from django.core.paginator import Paginator
+from django.db.models import Avg, Case, Count, IntegerField, Q, Value, When
 from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required
@@ -81,6 +83,145 @@ def _booking_status_badge(status: str) -> str:
     return "pending"
 
 
+SERVICE_PAGE_SIZE = 8
+SERVICE_SORT_CHOICES = [
+    ("newest", "Newest"),
+    ("price_low", "Price: Low to high"),
+    ("price_high", "Price: High to low"),
+    ("rating_high", "Top rated"),
+]
+SERVICE_MIN_RATING_CHOICES = [
+    ("", "Any rating"),
+    ("4.5", "4.5+ stars"),
+    ("4", "4+ stars"),
+    ("3", "3+ stars"),
+    ("2", "2+ stars"),
+]
+
+
+def _parse_decimal_filter(raw_value: str) -> Decimal | None:
+    raw_value = str(raw_value).strip()
+    if not raw_value:
+        return None
+    try:
+        return Decimal(raw_value)
+    except (InvalidOperation, TypeError):
+        return None
+
+
+def _get_service_filter_state(request: HttpRequest) -> dict:
+    valid_categories = {choice[0] for choice in Service.SERVICE_TYPES}
+    valid_sort_values = {choice[0] for choice in SERVICE_SORT_CHOICES}
+
+    search = request.GET.get("q", "").strip()
+    category = request.GET.get("category", "").strip()
+    min_price_raw = request.GET.get("min_price", "").strip()
+    max_price_raw = request.GET.get("max_price", "").strip()
+    min_rating_raw = request.GET.get("min_rating", "").strip()
+    sort = request.GET.get("sort", "newest").strip() or "newest"
+
+    filters = {
+        "search": search,
+        "category": category if category in valid_categories else "",
+        "min_price": _parse_decimal_filter(min_price_raw),
+        "max_price": _parse_decimal_filter(max_price_raw),
+        "min_rating": _parse_decimal_filter(min_rating_raw),
+        "sort": sort if sort in valid_sort_values else "newest",
+    }
+    display_values = {
+        "q": filters["search"],
+        "category": filters["category"],
+        "min_price": str(filters["min_price"]) if filters["min_price"] is not None else "",
+        "max_price": str(filters["max_price"]) if filters["max_price"] is not None else "",
+        "min_rating": str(filters["min_rating"]) if filters["min_rating"] is not None else "",
+        "sort": filters["sort"],
+    }
+    filters_active = any(
+        [
+            bool(filters["search"]),
+            bool(filters["category"]),
+            filters["min_price"] is not None,
+            filters["max_price"] is not None,
+            filters["min_rating"] is not None,
+            filters["sort"] != "newest",
+        ]
+    )
+    return {
+        "filters": filters,
+        "display_values": display_values,
+        "filters_active": filters_active,
+    }
+
+
+def _apply_service_filters(queryset, filters: dict):
+    queryset = queryset.select_related("vendor").annotate(
+        avg_rating=Avg("ratings__stars", filter=Q(ratings__status="approved")),
+        rating_count=Count("ratings", filter=Q(ratings__status="approved")),
+        has_price=Case(
+            When(price__isnull=True, then=Value(1)),
+            default=Value(0),
+            output_field=IntegerField(),
+        ),
+    )
+
+    search = filters["search"]
+    if search:
+        queryset = queryset.filter(
+            Q(name__icontains=search)
+            | Q(description__icontains=search)
+            | Q(vendor__company_name__icontains=search)
+            | Q(vendor__first_name__icontains=search)
+            | Q(vendor__last_name__icontains=search)
+            | Q(vendor__email__icontains=search)
+        )
+
+    if filters["category"]:
+        queryset = queryset.filter(service_type=filters["category"])
+
+    if filters["min_price"] is not None:
+        queryset = queryset.filter(price__gte=filters["min_price"])
+
+    if filters["max_price"] is not None:
+        queryset = queryset.filter(price__lte=filters["max_price"])
+
+    if filters["min_rating"] is not None:
+        queryset = queryset.filter(avg_rating__gte=filters["min_rating"])
+
+    sort = filters["sort"]
+    if sort == "price_low":
+        queryset = queryset.order_by("has_price", "price", "-created_at")
+    elif sort == "price_high":
+        queryset = queryset.order_by("has_price", "-price", "-created_at")
+    elif sort == "rating_high":
+        queryset = queryset.order_by("-avg_rating", "-created_at")
+    else:
+        queryset = queryset.order_by("-created_at")
+
+    return queryset
+
+
+def _service_listing_page(request: HttpRequest, queryset, page_size: int = SERVICE_PAGE_SIZE):
+    service_filter_state = _get_service_filter_state(request)
+    filtered_queryset = _apply_service_filters(queryset, service_filter_state["filters"])
+    paginator = Paginator(filtered_queryset, page_size)
+    page_obj = paginator.get_page(request.GET.get("page"))
+
+    query_params = request.GET.copy()
+    query_params.pop("page", None)
+
+    return {
+        "filters": service_filter_state["filters"],
+        "display_values": service_filter_state["display_values"],
+        "filters_active": service_filter_state["filters_active"],
+        "paginator": paginator,
+        "page_obj": page_obj,
+        "query_string": query_params.urlencode(),
+        "service_types": Service.SERVICE_TYPES,
+        "sort_choices": SERVICE_SORT_CHOICES,
+        "rating_choices": SERVICE_MIN_RATING_CHOICES,
+    }
+
+
 @login_required(login_url="users:login")
 @require_GET
 def vendor_service_list(request: HttpRequest) -> HttpResponse:
@@ -88,29 +229,36 @@ def vendor_service_list(request: HttpRequest) -> HttpResponse:
         return redirect("users:login")
 
     context = vendor_base_context(request, "services")
-    services = Service.objects.filter(vendor=request.user)
-    
-    # Prefetch approval requests to avoid N+1 queries
-    services = services.prefetch_related(
+    queryset = Service.objects.filter(vendor=request.user).prefetch_related(
         "approval_requests"
     )
-    
-    # Add approval status to each service
+    listing_page = _service_listing_page(request, queryset)
     services_with_status = []
-    for service in services:
+    for service in listing_page["page_obj"].object_list:
         approval_request = service.approval_requests.first()
-        approval_status = None
-        if approval_request:
-            approval_status = approval_request.status
-        services_with_status.append({
-            "service": service,
-            "approval_status": approval_status,
-        })
-    
-    context.update({
-        "services": services_with_status,
-        "page_name": "Services"
-    })
+        services_with_status.append(
+            {
+                "service": service,
+                "approval_status": approval_request.status if approval_request else None,
+                "avg_rating": service.avg_rating,
+                "rating_count": service.rating_count,
+            }
+        )
+
+    context.update(
+        {
+            "services": services_with_status,
+            "page_obj": listing_page["page_obj"],
+            "paginator": listing_page["paginator"],
+            "query_string": listing_page["query_string"],
+            "service_types": listing_page["service_types"],
+            "sort_choices": listing_page["sort_choices"],
+            "rating_choices": listing_page["rating_choices"],
+            "service_filters": listing_page["display_values"],
+            "service_filters_active": listing_page["filters_active"],
+            "page_name": "Services",
+        }
+    )
     return render(request, "services/vendor/list.html", context)
 
 
@@ -226,25 +374,26 @@ def vendor_service_profile(request: HttpRequest, pk: int) -> HttpResponse:
 def services_home(request: HttpRequest) -> HttpResponse:
     # show all approved services to clients
     context = client_base_context(request, "home")
-    services = list(
-        Service.objects.select_related("vendor")
-        .prefetch_related("availability_slots")
-        .filter(is_approved=True)
+    queryset = Service.objects.filter(is_approved=True).prefetch_related(
+        "availability_slots"
     )
+    listing_page = _service_listing_page(request, queryset)
+    services = list(listing_page["page_obj"].object_list)
     services_payload = []
+
+    booked_event_map = {}
+    booked_event_rows = EventServiceBooking.objects.filter(
+        service__in=services,
+        event__client=request.user,
+        status__in=["quoted", "approved"],
+    ).values_list("service_id", "event_id")
+    for service_id, event_id in booked_event_rows:
+        booked_event_map.setdefault(service_id, []).append(event_id)
+
     for service in services:
         availability_dates = _service_availability_dates(service)
         service.availability_dates_json = availability_dates
-        
-        # Get events for the current client that have booked this service
-        booked_event_ids = list(
-            EventServiceBooking.objects.filter(
-                service=service,
-                event__client=request.user,
-                status__in=["quoted", "approved"]
-            ).values_list("event_id", flat=True)
-        )
-        
+
         services_payload.append(
             {
                 "id": service.pk,
@@ -254,11 +403,13 @@ def services_home(request: HttpRequest) -> HttpResponse:
                 or service.vendor.get_full_name(),
                 "service_type": service.service_type,
                 "is_approved": service.is_approved,
-                "price": (
-                    str(service.price) if service.price is not None else ""
-                ),
+                "price": str(service.price) if service.price is not None else "",
                 "availability_dates": availability_dates,
-                "booked_event_ids": booked_event_ids,
+                "booked_event_ids": booked_event_map.get(service.pk, []),
+                "avg_rating": float(service.avg_rating)
+                if getattr(service, "avg_rating", None) is not None
+                else None,
+                "rating_count": int(service.rating_count or 0),
             }
         )
 
@@ -277,6 +428,14 @@ def services_home(request: HttpRequest) -> HttpResponse:
         {
             "services": services,
             "services_payload": services_payload,
+            "page_obj": listing_page["page_obj"],
+            "paginator": listing_page["paginator"],
+            "query_string": listing_page["query_string"],
+            "service_types": listing_page["service_types"],
+            "sort_choices": listing_page["sort_choices"],
+            "rating_choices": listing_page["rating_choices"],
+            "service_filters": listing_page["display_values"],
+            "service_filters_active": listing_page["filters_active"],
             "page_name": "Home",
             "client_upcoming_events_payload": upcoming_events,
         }

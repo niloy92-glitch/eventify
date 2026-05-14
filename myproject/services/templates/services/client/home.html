@@ -13,6 +13,8 @@
   <p class="muted">Browse services offered by vendors.</p>
 </section>
 
+{% include 'services/components/service_filters.html' %}
+
 {{ services_payload|json_script:"services-data" }}
 {{ client_upcoming_events_payload|json_script:"client-events-data" }}
 
@@ -25,6 +27,8 @@
     {% endfor %}
   </div>
 </section>
+
+{% include 'services/components/service_pagination.html' %}
 
 {% include 'services/components/service_detail_modal.html' %}
 

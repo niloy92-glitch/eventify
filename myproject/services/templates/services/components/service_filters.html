@@ -1,0 +1,97 @@
+<section class="card service-filter-card">
+  <form class="service-filter-form" method="get" action="">
+    <div class="service-filter-top">
+      <div class="service-filter-field service-filter-search">
+        <label for="service-search">Search</label>
+        <input
+          id="service-search"
+          name="q"
+          type="search"
+          class="form-field-input"
+          value="{{ service_filters.q }}"
+          placeholder="Search by service, vendor, or description"
+        />
+      </div>
+
+      <div class="service-filter-field service-filter-sort">
+        <label for="service-sort">Sort</label>
+        <select id="service-sort" name="sort" class="form-field-input">
+          {% for value, label in sort_choices %}
+            <option value="{{ value }}" {% if service_filters.sort == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div class="service-filter-chips-wrap">
+      <span class="service-filter-label">Category</span>
+      <div class="service-filter-chips" role="radiogroup" aria-label="Category filter">
+        <label class="service-chip{% if not service_filters.category %} is-active{% endif %}">
+          <input type="radio" name="category" value="" {% if not service_filters.category %}checked{% endif %} />
+          <span>All</span>
+        </label>
+        {% for value, label in service_types %}
+          <label class="service-chip{% if service_filters.category == value %} is-active{% endif %}">
+            <input type="radio" name="category" value="{{ value }}" {% if service_filters.category == value %}checked{% endif %} />
+            <span>{{ label }}</span>
+          </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="service-filter-grid">
+      <div class="service-filter-field">
+        <label for="service-min-price">Min price</label>
+        <input
+          id="service-min-price"
+          name="min_price"
+          type="number"
+          min="0"
+          step="0.01"
+          class="form-field-input"
+          value="{{ service_filters.min_price }}"
+          placeholder="0"
+        />
+      </div>
+
+      <div class="service-filter-field">
+        <label for="service-max-price">Max price</label>
+        <input
+          id="service-max-price"
+          name="max_price"
+          type="number"
+          min="0"
+          step="0.01"
+          class="form-field-input"
+          value="{{ service_filters.max_price }}"
+          placeholder="No limit"
+        />
+      </div>
+
+      <div class="service-filter-field">
+        <label for="service-min-rating">Min rating</label>
+        <select id="service-min-rating" name="min_rating" class="form-field-input">
+          {% for value, label in rating_choices %}
+            <option value="{{ value }}" {% if service_filters.min_rating == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="service-filter-actions">
+        <button type="button" class="btn service-clear-btn" data-filter-clear>Clear</button>
+        <button type="submit" class="btn btn-primary service-apply-btn" data-filter-apply>Apply</button>
+      </div>
+    </div>
+
+    <div class="service-filter-meta">
+      <p class="service-filter-summary">
+        Showing {{ page_obj.start_index }}-{{ page_obj.end_index }} of {{ paginator.count }} services.
+      </p>
+      {% if service_filters_active %}
+        <p class="service-filter-status">Filters active</p>
+      {% else %}
+        <p class="service-filter-status">No filters applied</p>
+      {% endif %}
+    </div>
+  </form>
+</section>
