@@ -81,59 +81,73 @@
 /* Service Grid */
 .service-grid {
 	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-	gap: 16px;
+	grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+	gap: 20px;
 }
 
 .service-filter-card {
-	margin-bottom: 16px;
+	margin-bottom: 20px;
+	padding: 16px;
+	background: var(--surface);
+	border: 1px solid var(--line);
+	border-radius: 14px;
+	box-shadow: 0 1px 3px rgba(20,18,16,.06);
+	transition: box-shadow .2s ease;
+}
+
+.service-filter-card:hover {
+	box-shadow: 0 4px 12px rgba(20,18,16,.08);
 }
 
 .service-filter-form {
 	display: grid;
-	gap: 16px;
+	gap: 18px;
+	width: 100%;
 }
 
 .service-filter-top {
 	display: grid;
-	grid-template-columns: minmax(0, 1.6fr) minmax(180px, 0.8fr);
+	grid-template-columns: minmax(0, 1.6fr) minmax(160px, 0.8fr);
 	gap: 14px;
 }
 
 .service-filter-field {
 	display: grid;
-	gap: 8px;
+	gap: 6px;
 }
 
 .service-filter-field label,
 .service-filter-label {
 	font-size: 13px;
-	font-weight: 600;
-	color: var(--text-2);
+	font-weight: 700;
+	color: var(--text);
+	text-transform: uppercase;
+	letter-spacing: .02em;
 }
 
 .service-filter-chips-wrap {
 	display: grid;
-	gap: 10px;
+	gap: 12px;
 }
 
 .service-filter-chips {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 8px;
+	gap: 10px;
 }
 
 .service-chip {
 	position: relative;
 	display: inline-flex;
 	align-items: center;
-	border: 1px solid var(--line-2);
+	border: 1.5px solid var(--line-2);
 	border-radius: var(--radius-full);
 	background: var(--surface);
 	color: var(--text-2);
 	font-size: 13px;
-	font-weight: 500;
-	transition: border-color 150ms ease, background 150ms ease, color 150ms ease, box-shadow 150ms ease;
+	font-weight: 600;
+	transition: all .2s ease;
+	cursor: pointer;
 }
 
 .service-chip input {
@@ -145,13 +159,15 @@
 .service-chip span {
 	display: inline-flex;
 	align-items: center;
-	padding: 8px 14px;
+	padding: 9px 16px;
+	font-weight: 600;
 }
 
 .service-chip:hover,
 .service-chip:has(input:focus-visible) {
-	border-color: rgba(20, 18, 16, 0.24);
-	box-shadow: var(--shadow-sm);
+	border-color: var(--accent);
+	box-shadow: 0 0 0 3px rgba(201,66,14,.08);
+	transform: translateY(-1px);
 }
 
 .service-chip.is-active,
@@ -159,6 +175,8 @@
 	background: var(--ink);
 	border-color: var(--ink);
 	color: var(--ink-inv);
+	box-shadow: 0 4px 12px rgba(20,18,16,.15);
+	transform: translateY(-2px);
 }
 
 .service-filter-grid {
@@ -172,15 +190,16 @@
 	display: flex;
 	align-items: flex-end;
 	justify-content: flex-end;
-	gap: 10px;
+	gap: 12px;
 	min-width: 0;
 }
 
 .service-clear-btn:disabled,
 .service-apply-btn:disabled,
 .btn.disabled {
-	opacity: 0.45;
+	opacity: 0.5;
 	pointer-events: none;
+	cursor: not-allowed;
 }
 
 .service-filter-meta {
@@ -188,40 +207,51 @@
 	justify-content: space-between;
 	gap: 12px;
 	flex-wrap: wrap;
-	padding-top: 2px;
+	padding-top: 8px;
+	margin-top: 12px;
+	border-top: 1px solid var(--line);
 }
 
 .service-filter-summary,
 .service-filter-status {
 	font-size: 13px;
 	color: var(--text-2);
+	font-weight: 600;
 }
 
 .service-filter-status {
-	font-weight: 600;
+	color: var(--text-3);
+	font-weight: 500;
 }
 
 .service-card-price {
-	margin-top: 6px;
-	font-size: 14px;
-	font-weight: 600;
-	color: var(--text);
+	margin-top: 12px;
+	font-size: 15px;
+	font-weight: 800;
+	color: var(--accent);
+	font-family: var(--font-display);
 }
 
 .service-mini-rating {
-	margin-top: 6px;
+	margin-top: 12px;
 	font-size: 13px;
+	display: flex;
+	align-items: center;
+	gap: 6px;
 }
 
 .service-pagination {
-	margin-top: 16px;
+	margin-top: 20px;
+	padding-top: 16px;
+	border-top: 1px solid var(--line);
 }
 
 .service-pagination-actions {
 	display: flex;
 	align-items: center;
-	gap: 8px;
+	gap: 10px;
 	flex-wrap: wrap;
+	justify-content: center;
 }
 
 .service-card-header {
@@ -234,70 +264,96 @@
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	width: 20px;
-	height: 20px;
+	width: 24px;
+	height: 24px;
 	border-radius: 50%;
 	background: var(--green);
 	color: #ffffff;
-	font-size: 13px;
-	font-weight: 700;
+	font-size: 14px;
+	font-weight: 800;
 	flex-shrink: 0;
+	box-shadow: 0 2px 4px rgba(26,110,60,.2);
 }
 
 .service-card {
-	padding: 14px;
-	border-radius: 16px;
+	padding: 18px;
+	border-radius: 14px;
 	border: 1px solid var(--line);
-	background: linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%);
+	background: var(--surface);
 	cursor: pointer;
 	box-shadow: var(--shadow-sm);
-	transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+	transition: all .2s ease;
+	display: flex;
+	flex-direction: column;
 }
 
 .service-card:hover,
 .service-card:focus-visible {
-	transform: translateY(-2px);
-	box-shadow: var(--shadow-md);
-	border-color: rgba(20, 18, 16, 0.18);
+	transform: translateY(-4px);
+	box-shadow: var(--shadow);
+	border-color: rgba(201,66,14,.25);
 	outline: none;
+	background: linear-gradient(135deg, var(--surface) 0%, #fffbf8 100%);
 }
 
 .service-card h3 {
-	margin: 0 0 6px;
-}
-
-.service-card .muted {
-	margin: 0;
-}
-
-.service-rating-display {
-	margin-top: 8px;
-	padding-top: 8px;
-	border-top: 1px solid var(--line-2);
+	margin: 0 0 8px;
+	font-size: 1.1rem;
+	font-weight: 700;
+	color: var(--text);
+	letter-spacing: -.01em;
 	display: flex;
 	align-items: center;
 	gap: 6px;
-	font-size: 14px;
+}
+
+.service-card .muted {
+	margin: 0 0 4px;
+	font-size: 13px;
+	color: var(--text-2);
+	font-weight: 500;
+}
+
+.service-card p {
+	margin: 2px 0;
+	font-size: 13px;
+	color: var(--text-3);
+}
+
+.service-rating-display {
+	margin-top: 16px;
+	padding-top: 14px;
+	border-top: 1px solid var(--line);
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 13px;
 }
 
 .rating-stars {
-	color: var(--text);
+	color: var(--amber);
+	font-weight: 700;
+	letter-spacing: 2px;
+}
+
+.rating-count {
+	color: var(--text-2);
 	font-weight: 500;
-	letter-spacing: 1px;
 }
 
 .service-actions {
-	margin-top: 8px;
+	margin-top: 12px;
 	display: flex;
-	gap: 8px;
+	gap: 10px;
+	flex-wrap: wrap;
 }
 
 .booking-quote-form {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 8px;
+	gap: 10px;
 	align-items: center;
-	margin-bottom: 8px;
+	margin-bottom: 10px;
 }
 
 .booking-quote-input {
@@ -306,9 +362,10 @@
 }
 
 .service-pending {
-	margin-top: 8px;
-	color: #b45309;
-	font-weight: 600;
+	margin-top: 10px;
+	color: var(--amber);
+	font-weight: 700;
+	font-size: 13px;
 }
 
 .service-detail-panel {
