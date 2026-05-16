@@ -43,7 +43,7 @@ def env_first(names: list[str], default: str = "") -> str:
 SECRET_KEY = env_str("DJANGO_SECRET_KEY", "django-insecure-dev-key")
 
 # SECURITY: DEBUG defaults to False (production-safe). Set DEBUG=True only in development.
-DEBUG = env_bool("DJANGO_DEBUG", True) 
+DEBUG = env_bool("DJANGO_DEBUG", False)
 
 # SECURITY: ALLOWED_HOSTS must be explicitly set. Defaults to localhost only.
 # For production, set ALLOWED_HOSTS env var to comma-separated list (e.g. "example.com,www.example.com")
@@ -53,6 +53,12 @@ ALLOWED_HOSTS = [
     host.strip()
     for host in env_str("ALLOWED_HOSTS", _default_hosts).split(",")
     if host.strip()
+]
+
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in env_str("CSRF_TRUSTED_ORIGINS", "").split(",")
+    if origin.strip()
 ]
 
 INSTALLED_APPS = [
@@ -156,6 +162,7 @@ USE_TZ = True
 
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "users.EventUser"
