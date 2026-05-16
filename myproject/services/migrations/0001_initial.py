@@ -11,7 +11,7 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name="PaymentMethod",
+            name="ApprovalRequest",
             fields=[
                 (
                     "id",
@@ -23,29 +23,90 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 (
-                    "provider",
+                    "request_type",
+                    models.CharField(choices=[("service", "Service")], max_length=30),
+                ),
+                (
+                    "status",
                     models.CharField(
                         choices=[
-                            ("bkash", "bKash"),
-                            ("nagad", "Nagad"),
-                            ("rocket", "Rocket"),
-                            ("bank", "Bank Transfer"),
+                            ("pending", "Pending"),
+                            ("allowed", "Allowed"),
+                            ("rejected", "Rejected"),
                         ],
+                        default="pending",
                         max_length=20,
                     ),
                 ),
-                ("account_name", models.CharField(blank=True, max_length=150)),
-                ("account_number", models.CharField(max_length=64)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+            ],
+            options={
+                "ordering": ["-created_at"],
+            },
+        ),
+        migrations.CreateModel(
+            name="Service",
+            fields=[
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("name", models.CharField(max_length=150)),
+                ("description", models.TextField(blank=True)),
+                (
+                    "service_type",
+                    models.CharField(
+                        choices=[
+                            ("catering", "Catering"),
+                            ("photography", "Photography"),
+                            ("decoration", "Decoration"),
+                            ("music", "Music"),
+                            ("venue", "Venue"),
+                            ("other", "Other"),
+                        ],
+                        default="other",
+                        max_length=40,
+                    ),
+                ),
+                (
+                    "price",
+                    models.DecimalField(
+                        blank=True, decimal_places=2, max_digits=10, null=True
+                    ),
+                ),
+                ("is_approved", models.BooleanField(default=False)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+            ],
+            options={
+                "ordering": ["-created_at"],
+            },
+        ),
+        migrations.CreateModel(
+            name="ServiceAvailabilitySlot",
+            fields=[
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("available_date", models.DateField()),
                 ("is_active", models.BooleanField(default=True)),
-                ("created_at", models.DateTimeField(auto_now_add=True)),
-                ("updated_at", models.DateTimeField(auto_now=True)),
             ],
             options={
-                "ordering": ["-updated_at"],
+                "ordering": ["available_date"],
             },
         ),
         migrations.CreateModel(
-            name="Payout",
+            name="ServiceRating",
             fields=[
                 (
                     "id",
@@ -56,68 +117,24 @@ class Migration(migrations.Migration):
                         verbose_name="ID",
                     ),
                 ),
-                ("gross_amount", models.DecimalField(decimal_places=2, max_digits=12)),
-                ("currency", models.CharField(default="BDT", max_length=3)),
+                ("stars", models.IntegerField()),
                 (
                     "status",
                     models.CharField(
-                        choices=[("released", "Released")],
-                        default="released",
+                        choices=[
+                            ("pending", "Pending"),
+                            ("approved", "Approved"),
+                            ("rejected", "Rejected"),
+                        ],
+                        default="pending",
                         max_length=20,
                     ),
                 ),
                 ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("approved_at", models.DateTimeField(blank=True, null=True)),
             ],
             options={
                 "ordering": ["-created_at"],
-            },
-        ),
-        migrations.CreateModel(
-            name="Transaction",
-            fields=[
-                (
-                    "id",
-                    models.BigAutoField(
-                        auto_created=True,
-                        primary_key=True,
-                        serialize=False,
-                        verbose_name="ID",
-                    ),
-                ),
-                ("tx_ref", models.CharField(max_length=50, unique=True)),
-                ("amount", models.DecimalField(decimal_places=2, max_digits=12)),
-                ("currency", models.CharField(default="BDT", max_length=3)),
-                (
-                    "status",
-                    models.CharField(
-                        choices=[("success", "Success"), ("failed", "Failed")],
-                        max_length=20,
-                    ),
-                ),
-                ("failure_reason", models.CharField(blank=True, max_length=255)),
-                ("created_at", models.DateTimeField(auto_now_add=True)),
-            ],
-            options={
-                "ordering": ["-created_at"],
-            },
-        ),
-        migrations.CreateModel(
-            name="TransactionServiceItem",
-            fields=[
-                (
-                    "id",
-                    models.BigAutoField(
-                        auto_created=True,
-                        primary_key=True,
-                        serialize=False,
-                        verbose_name="ID",
-                    ),
-                ),
-                ("service_total", models.DecimalField(decimal_places=2, max_digits=12)),
-                ("paid_amount", models.DecimalField(decimal_places=2, max_digits=12)),
-            ],
-            options={
-                "ordering": ["id"],
             },
         ),
     ]

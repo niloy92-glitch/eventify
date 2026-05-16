@@ -5,7 +5,7 @@
 
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'services/css/services.css' %}" />
-<link rel="stylesheet" href="{% static 'users/css/events.css' %}" />
+<link rel="stylesheet" href="{% static 'events/css/events.css' %}" />
 {% endblock %}
 
 {% block client_content %}
@@ -243,6 +243,6 @@
   });
 </script>
 
-{% include 'users/client/components/event_payment_modal.html' %}
-<script src="{% static 'users/js/event_payment_modal.js' %}"></script>
+{% include 'events/client/components/event_payment_modal.html' %}
+<script src="{% static 'events/js/event_payment_modal.js' %}"></script>
 {% endblock %}

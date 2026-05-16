@@ -3,6 +3,7 @@ from pathlib import Path
 import dj_database_url
 from dotenv import load_dotenv
 
+import os
 from os import getenv
 
 
@@ -40,10 +41,17 @@ def env_first(names: list[str], default: str = "") -> str:
 
 
 SECRET_KEY = env_str("DJANGO_SECRET_KEY", "django-insecure-dev-key")
-DEBUG = env_bool("DEBUG", True)
+
+# SECURITY: DEBUG defaults to False (production-safe). Set DEBUG=True only in development.
+DEBUG = env_bool("DJANGO_DEBUG", True) 
+
+# SECURITY: ALLOWED_HOSTS must be explicitly set. Defaults to localhost only.
+# For production, set ALLOWED_HOSTS env var to comma-separated list (e.g. "example.com,www.example.com")
+# _default_hosts = "localhost,127.0.0.1" if not env_bool("DJANGO_DEBUG", False) else "*"
+_default_hosts = "*" if DEBUG else "localhost,127.0.0.1"
 ALLOWED_HOSTS = [
     host.strip()
-    for host in env_str("ALLOWED_HOSTS", "*").split(",")
+    for host in env_str("ALLOWED_HOSTS", _default_hosts).split(",")
     if host.strip()
 ]
 
@@ -63,6 +71,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -178,3 +187,34 @@ SENDER_ADDRESS = env_str(
 )
 SENDER_NAME = env_str("SENDER_NAME", EMAIL_BRAND_NAME)
 DEFAULT_FROM_EMAIL = f"{SENDER_NAME} <{SENDER_ADDRESS}>"
+
+# ====== PRODUCTION SECURITY SETTINGS ======
+# These settings enforce secure defaults when DEBUG=False (production mode)
+if not DEBUG:
+    # HTTPS & Transport Security
+    SECURE_SSL_REDIRECT = env_bool("SECURE_SSL_REDIRECT", True)
+    SECURE_HSTS_SECONDS = env_int("SECURE_HSTS_SECONDS", 31536000)  # 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = env_bool("SECURE_HSTS_INCLUDE_SUBDOMAINS", True)
+    SECURE_HSTS_PRELOAD = env_bool("SECURE_HSTS_PRELOAD", True)
+    
+    # Cookie Security
+    SESSION_COOKIE_SECURE = env_bool("SESSION_COOKIE_SECURE", True)
+    SESSION_COOKIE_HTTPONLY = env_bool("SESSION_COOKIE_HTTPONLY", True)
+    SESSION_COOKIE_SAMESITE = env_str("SESSION_COOKIE_SAMESITE", "Lax")
+    CSRF_COOKIE_SECURE = env_bool("CSRF_COOKIE_SECURE", True)
+    CSRF_COOKIE_HTTPONLY = env_bool("CSRF_COOKIE_HTTPONLY", True)
+    CSRF_COOKIE_SAMESITE = env_str("CSRF_COOKIE_SAMESITE", "Lax")
+    
+    # Content Security
+    X_FRAME_OPTIONS = env_str("X_FRAME_OPTIONS", "DENY")
+    SECURE_CONTENT_SECURITY_POLICY = {
+        "default-src": ("'self'",),
+        "script-src": ("'self'", "'unsafe-inline'", "cdn.jsdelivr.net"),  # For Lucide icons
+        "style-src": ("'self'", "'unsafe-inline'"),
+        "img-src": ("'self'", "data:", "https:"),
+    }
+    
+    # Other security
+    SECURE_BROWSER_XSS_FILTER = env_bool("SECURE_BROWSER_XSS_FILTER", True)
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+

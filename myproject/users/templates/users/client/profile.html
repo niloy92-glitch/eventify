@@ -100,5 +100,5 @@
 </div>
 
 {% url 'users:client_delete_account' as client_delete_action %}
-{% include 'components/profile_delete_modal.html' with delete_action=client_delete_action %}
+{% include 'users/components/profile_delete_modal.html' with delete_action=client_delete_action %}
 {% endblock %}

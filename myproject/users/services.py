@@ -31,6 +31,8 @@ from django.utils.encoding import force_bytes
 from django.utils import timezone
 from django.utils.http import urlsafe_base64_encode
 
+logger = logging.getLogger(__name__)
+
 from .models import (
     ApprovalStatusChoices,
     Notification,
@@ -286,18 +288,23 @@ def auth_context(
         default_form_values.update(form_values)
 
     # site-level counts for marketing/intro tiles on auth page
+    site_clients_count = 0
+    site_vendors_count = 0
     try:
         user_model = get_user_model()
         site_clients_count = user_model.objects.filter(role="client", is_active=True).count()
         site_vendors_count = user_model.objects.filter(role="vendor", is_active=True).count()
-    except Exception:
-        site_clients_count = site_vendors_count = 0
+    except Exception as e:
+        logger.error(f"Failed to fetch site user counts: {e}")
+        # Fallback to 0 counts if database unavailable
 
+    site_events_count = 0
     try:
         Event = apps.get_model("events", "Event")
         site_events_count = Event.objects.count()
-    except Exception:
-        site_events_count = 0
+    except Exception as e:
+        logger.error(f"Failed to fetch site events count: {e}")
+        # Fallback to 0 count if database unavailable
 
     return {
         "mode": mode,

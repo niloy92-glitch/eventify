@@ -7,6 +7,7 @@ __pycache__/
 dist/
 build/
 *.pyo
+venv/
 
 # Django
 *.log
@@ -19,9 +20,8 @@ local_settings.py
 .env
 .env.*
 
-# Django migrations
-*/migrations/
-!*/migrations/__init__.py
+# Django migrations - TRACKED: We keep migrations in version control for reproducibility
+# To exclude specific migrations: use .gitignore patterns per app if needed
 
 # PostgreSQL
 *.pgsql

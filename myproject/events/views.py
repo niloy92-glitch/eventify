@@ -194,7 +194,7 @@ def client_my_events_view(request: HttpRequest) -> HttpResponse:
             "event_payload": events,
         }
     )
-    return render(request, "users/client/my_events.html", context)
+    return render(request, "events/client/my_events.html", context)
 
 
 @login_required(login_url="users:login")
@@ -284,7 +284,7 @@ def client_event_detail_view(
             "rating_services_json": json.dumps(rating_services),
         }
     )
-    return render(request, "users/client/event_detail.html", context)
+    return render(request, "events/client/event_detail.html", context)
 
 
 @login_required(login_url="users:login")
@@ -493,7 +493,6 @@ def client_event_payment_view(
 
 
 @login_required(login_url="users:login")
-@login_required(login_url="users:login")
 @require_POST
 def client_event_delete_view(
     request: HttpRequest, event_id: int
@@ -553,7 +552,7 @@ def vendor_events_view(request: HttpRequest) -> HttpResponse:
     approved_events = [_serialize_booking_request(item) for item in queryset]
 
     context.update({"page_name": "Events", "approved_events": approved_events})
-    return render(request, "users/vendor/events.html", context)
+    return render(request, "events/vendor/events.html", context)
 
 
 @login_required(login_url="users:login")
@@ -611,7 +610,7 @@ def vendor_event_detail_view(request: HttpRequest, event_id: int) -> HttpRespons
         "vendor_services": vendor_services,
         "back_url": reverse("events:vendor_events"),
     })
-    return render(request, "users/vendor/event_detail.html", context)
+    return render(request, "events/vendor/event_detail.html", context)
 
 
 @login_required(login_url="users:login")
@@ -624,7 +623,7 @@ def vendor_booking_requests_view(request: HttpRequest) -> HttpResponse:
     context = vendor_base_context(request, "booking_requests")
     context.update(vendor_dashboard_data(request))
     context["page_name"] = "Booking Requests"
-    return render(request, "users/vendor/booking_requests.html", context)
+    return render(request, "events/vendor/booking_requests.html", context)
 
 
 def _ensure_service_availability(
@@ -696,7 +695,7 @@ def _serialize_upcoming_event(event: Event) -> dict:
         "id": event.pk,
         "title": event.title,
         "event_date": event.event_date.strftime("%Y-%m-%d"),
-        "event_date_label": event.event_date.strftime("A, %B %d, %Y"),
+        "event_date_label": event.event_date.strftime("%A, %B %d, %Y"),
         "venue_name": event.venue_name or "Venue not set",
         "has_own_venue": bool(event.has_own_venue),
     }

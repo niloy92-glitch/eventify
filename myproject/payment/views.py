@@ -2,6 +2,7 @@ from collections import defaultdict
 from decimal import Decimal, ROUND_DOWN, InvalidOperation
 from uuid import uuid4
 import json
+import logging
 
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
@@ -26,6 +27,8 @@ from users.services import (
 )
 from .forms import VendorPaymentMethodForm
 from .models import PaymentMethod, Payout, Transaction, TransactionServiceItem
+
+logger = logging.getLogger(__name__)
 
 
 def _client_access_redirect(request: HttpRequest):
@@ -378,8 +381,13 @@ def client_event_checkout_view(request: HttpRequest, event_id: int) -> JsonRespo
                         event=event,
                         stars=stars,
                     )
-                except Exception:
-                    # Ignore duplicate/invalid rating errors in checkout flow.
+                except (ValueError, KeyError) as e:
+                    # Log rating errors but continue checkout (ratings are optional)
+                    logger.warning(f"Failed to create rating for booking {booking.id}: {e}")
+                    continue
+                except Exception as e:
+                    # Unexpected error during rating - log and continue
+                    logger.error(f"Unexpected error creating rating for booking {booking.id}: {e}")
                     continue
 
     event_total = sum(_booking_total(booking) for booking in approved_bookings)

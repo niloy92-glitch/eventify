@@ -5,7 +5,7 @@
 
 {% block extra_head %}
 <link rel="stylesheet" href="{% static 'services/css/services.css' %}" />
-<link rel="stylesheet" href="{% static 'users/css/events.css' %}" />
+<link rel="stylesheet" href="{% static 'events/css/events.css' %}" />
 {% endblock %}
 
 {% block client_content %}
@@ -60,10 +60,10 @@
   </div>
 </section>
 
-{% include 'users/components/client_event_modal.html' %}
-{% include 'users/components/event_delete_modal.html' %}
+{% include 'events/client/components/client_event_modal.html' %}
+{% include 'events/client/components/event_delete_modal.html' %}
 {% endblock %}
 
 {% block extra_scripts %}
-<script src="{% static 'users/js/client_events.js' %}"></script>
+<script src="{% static 'events/js/client_events.js' %}"></script>
 {% endblock %}

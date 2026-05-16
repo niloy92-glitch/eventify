@@ -1,5 +1,6 @@
 from datetime import timedelta
 from decimal import Decimal, InvalidOperation
+import logging
 
 from django.core.paginator import Paginator
 from django.db.models import Avg, Case, Count, IntegerField, Q, Value, When
@@ -27,6 +28,7 @@ from users.services import (
 )
 
 
+logger = logging.getLogger(__name__)
 User = get_user_model()
 
 
@@ -421,7 +423,8 @@ def services_home(request: HttpRequest) -> HttpResponse:
         upcoming_events = [
             _serialize_upcoming_event(event) for event in event_queryset
         ]
-    except Exception:
+    except Exception as e:
+        logger.error(f"Failed to fetch upcoming events for client {request.user.id}: {e}")
         upcoming_events = []
 
     context.update(
@@ -816,33 +819,3 @@ def service_rating_view(request: HttpRequest, service_id: int) -> HttpResponse:
         "rating_count": count,
         "vendor_avg_rating": float(vendor_avg) if vendor_avg else None,
     })
-
-    booking.status = "approved" if decision == "approve" else "rejected"
-    booking.responded_at = timezone.now()
-    booking.save(update_fields=["status", "responded_at", "updated_at"])
-    notify_user(
-        booking.event.client,
-        f"Booking {booking.status}",
-        f"Your request for '{booking.service.name}' was {booking.status}.",
-        category="approval",
-        link_url=reverse("events:client_my_events"),
-    )
-
-    from chat.models import Conversation, Message
-
-    conv, _ = Conversation.objects.get_or_create(
-        client=booking.event.client, vendor=booking.service.vendor
-    )
-    status_text = "approved" if decision == "approve" else "rejected"
-    Message.objects.create(
-        conversation=conv,
-        is_system=True,
-        content=f"System: Vendor has {status_text} the booking request for '{booking.service.name}'.",
-    )
-
-    return redirect(
-        add_auth_notice(
-            reverse("users:vendor_dashboard"),
-            AUTH_MESSAGE_KEYS["booking_updated"],
-        )
-    )

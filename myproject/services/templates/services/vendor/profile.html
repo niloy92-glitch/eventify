@@ -16,6 +16,15 @@
     </div>
     <div>
       <a class="btn" href="{% url 'services:vendor_service_edit' service.pk %}">Edit</a>
+      <form
+        method="post"
+        action="{% url 'services:vendor_service_delete' service.pk %}"
+        style="display:inline"
+        onsubmit="return confirm('Delete this service? This cannot be undone.');"
+      >
+        {% csrf_token %}
+        <button type="submit" class="btn danger-btn">Delete</button>
+      </form>
       <a class="btn" href="{% url 'services:vendor_services' %}">Back</a>
     </div>
   </div>
