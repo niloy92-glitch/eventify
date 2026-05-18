@@ -1206,6 +1206,31 @@ def _do_send_verification_email(user, verify_url: str) -> None:
         f"{verify_url}\n\n"
         "If you did not create this account, ignore this email."
     )
+
+    resend_api_key = getattr(settings, "RESEND_API_KEY", "")
+    if resend_api_key:
+        resend_from = getattr(settings, "RESEND_FROM_EMAIL", "") or settings.DEFAULT_FROM_EMAIL
+        response = requests.post(
+            "https://api.resend.com/emails",
+            json={
+                "from": resend_from,
+                "to": [user.email],
+                "subject": "Verify your Eventify email",
+                "html": html_body,
+                "text": plain_body,
+            },
+            headers={
+                "Authorization": f"Bearer {resend_api_key}",
+                "Content-Type": "application/json",
+            },
+            timeout=getattr(settings, "EMAIL_TIMEOUT", 10),
+        )
+        if response.status_code >= 400:
+            raise RuntimeError(
+                f"Resend API error {response.status_code}: {response.text}"
+            )
+        return
+
     send_mail(
         subject="Verify your Eventify email",
         message=plain_body,
