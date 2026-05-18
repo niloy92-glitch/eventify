@@ -165,21 +165,11 @@
             <p
               class="status-text"
               aria-live="polite"
-              {%
-              if
-              status_level=""
-              ="error"
-              %}
+              {% if status_level == "error" %}
               style="color: var(--red)"
-              {%
-              elif
-              status_level=""
-              ="success"
-              %}
+              {% elif status_level == "success" %}
               style="color: var(--teal)"
-              {%
-              endif
-              %}
+              {% endif %}
             >
               {{ status_message }}
               {% if resend_verification_url %}
@@ -406,21 +396,11 @@
             <p
               class="status-text"
               aria-live="polite"
-              {%
-              if
-              status_level=""
-              ="error"
-              %}
+              {% if status_level == "error" %}
               style="color: var(--red)"
-              {%
-              elif
-              status_level=""
-              ="success"
-              %}
+              {% elif status_level == "success" %}
               style="color: var(--teal)"
-              {%
-              endif
-              %}
+              {% endif %}
             >
               {{ status_message }}
               {% if resend_verification_url %}

@@ -189,11 +189,15 @@ EMAIL_BRAND_CARD = env_str("EMAIL_BRAND_CARD", "#ffffff")
 EMAIL_BRAND_TEXT = env_str("EMAIL_BRAND_TEXT", "#1f2937")
 EMAIL_BRAND_MUTED = env_str("EMAIL_BRAND_MUTED", "#6b7280")
 
+SITE_URL = env_str("SITE_URL", "").strip().rstrip("/")
+
 SENDER_ADDRESS = env_str(
     "SENDER_ADDRESS", EMAIL_HOST_USER or "no-reply@example.com"
 )
 SENDER_NAME = env_str("SENDER_NAME", EMAIL_BRAND_NAME)
-DEFAULT_FROM_EMAIL = f"{SENDER_NAME} <{SENDER_ADDRESS}>"
+DEFAULT_FROM_EMAIL = env_str(
+    "DEFAULT_FROM_EMAIL", f"{SENDER_NAME} <{SENDER_ADDRESS}>"
+)
 
 # ====== PRODUCTION SECURITY SETTINGS ======
 # These settings enforce secure defaults when DEBUG=False (production mode)
