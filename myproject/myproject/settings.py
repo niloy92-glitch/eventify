@@ -72,7 +72,7 @@ INSTALLED_APPS = [
     "services",
     "events",
     "chat",
-    "payment",
+    "payment","anymail",
 ]
 
 MIDDLEWARE = [
@@ -181,6 +181,9 @@ EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", True)
 EMAIL_HOST_USER = env_str("EMAIL_HOST_USER", "")
 EMAIL_HOST_PASSWORD = env_str("EMAIL_HOST_PASSWORD", "")
 EMAIL_TIMEOUT = env_int("EMAIL_TIMEOUT", 10)
+
+RESEND_API_KEY = env_str("RESEND_API_KEY", "")
+RESEND_FROM_EMAIL = env_str("RESEND_FROM_EMAIL", "")
 
 EMAIL_BRAND_NAME = env_str("EMAIL_BRAND_NAME", "Eventify")
 EMAIL_BRAND_PRIMARY = env_str("EMAIL_BRAND_PRIMARY", "#f97316")
