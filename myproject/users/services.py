@@ -1231,12 +1231,16 @@ def send_verification_email(request: HttpRequest, user) -> None:
     def _send() -> None:
         try:
             _do_send_verification_email(user, verify_url)
-        except Exception:
+        except Exception as e:
             logger.exception(
-                "Failed to send verification email to %s", user.email
+                "Failed to send verification email to %s: %s", user.email, str(e)
             )
+            # Re-raise so caller can handle and show proper error
             raise
 
+    # Use transaction.on_commit for reliable email sending after DB commit
+    # If email fails, the transaction will have already been committed
+    # so the user account exists even if email sending failed
     transaction.on_commit(_send)
 
 

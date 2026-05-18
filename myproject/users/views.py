@@ -280,7 +280,19 @@ def register_page(request: HttpRequest) -> HttpResponse:
     user = create_user_from_registration(form.cleaned_data, verification_required())
 
     if verification_required():
-        send_verification_email(request, user)
+        try:
+            send_verification_email(request, user)
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.exception("Failed to send verification email to %s during registration", user.email)
+            context = auth_context(request, "register", active_role=role)
+            context.update({
+                "status_message": "Registration successful! However, we couldn't send the verification email. Please try resending it.",
+                "status_level": "warning",
+            })
+            return render(request, "auth.html", context, status=500)
+        
         return redirect(
             add_auth_notice(
                 f"{reverse('users:login')}?{urlencode({'role': role, 'email': user.email})}",
@@ -356,20 +368,37 @@ def verify_email(request: HttpRequest, uidb64: str, token: str) -> HttpResponse:
 def resend_verification_email_view(request: HttpRequest) -> HttpResponse:
     role = normalize_role(request.GET.get("role"))
     email = str(request.GET.get("email", "")).strip().lower()
+    error_message = ""
 
     if email and verification_required():
         user = User.objects.filter(email__iexact=email, email_verified=False).first()
         if user:
-            send_verification_email(request, user)
+            try:
+                send_verification_email(request, user)
+            except Exception as e:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.exception("Failed to send verification email to %s", user.email)
+                error_message = "Failed to send verification email. Please try again later."
 
-    query = urlencode(
-        {
-            "role": role,
-            "email": email,
-            "auth_level": "success",
-            "auth_message": "If an unverified account exists for this email, a verification link has been sent.",
-        }
-    )
+    if error_message:
+        query = urlencode(
+            {
+                "role": role,
+                "email": email,
+                "auth_level": "error",
+                "auth_message": error_message,
+            }
+        )
+    else:
+        query = urlencode(
+            {
+                "role": role,
+                "email": email,
+                "auth_level": "success",
+                "auth_message": "If an unverified account exists for this email, a verification link has been sent.",
+            }
+        )
     return redirect(f"{reverse('users:login')}?{query}")
 
 
