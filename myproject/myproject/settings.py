@@ -72,7 +72,7 @@ INSTALLED_APPS = [
     "services",
     "events",
     "chat",
-    "payment","anymail",
+    "payment",
 ]
 
 MIDDLEWARE = [
