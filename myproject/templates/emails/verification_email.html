@@ -18,6 +18,11 @@
       </td>
     </tr>
   </table>
+  {% if brand_home_url %}
+  <p style="margin-top:18px;font-size:13px;color:{{ brand_muted|default:'#6b7280' }};">
+    Or visit our site: <a href="{{ brand_home_url }}" style="color:{{ brand_secondary|default:'#10b981' }};">{{ brand_home_url }}</a>
+  </p>
+  {% endif %}
   <p style="margin:24px 0 0;font-size:13px;line-height:1.6;color:{{ brand_muted|default:'#6b7280' }};">
     If you did not create this account, you can ignore this email.
   </p>

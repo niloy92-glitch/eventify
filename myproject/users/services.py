@@ -12,6 +12,7 @@ from urllib.parse import urlencode
 from urllib.parse import parse_qsl
 from urllib.parse import urlsplit
 from urllib.parse import urlunsplit
+from urllib.parse import urljoin
 
 import requests
 from django.apps import apps
@@ -1180,6 +1181,7 @@ def _email_brand_context() -> dict:
         "brand_card": getattr(settings, "EMAIL_BRAND_CARD", "#ffffff"),
         "brand_text": getattr(settings, "EMAIL_BRAND_TEXT", "#1f2937"),
         "brand_muted": getattr(settings, "EMAIL_BRAND_MUTED", "#6b7280"),
+        "brand_home_url": getattr(settings, "SITE_URL", ""),
     }
 
 
@@ -1195,6 +1197,7 @@ def _do_send_verification_email(user, verify_url: str) -> None:
             "heading": "Verify your email address",
             "message": "Click the button below to confirm your account and finish setting up Eventify.",
             **brand_context,
+            "brand_home_url": getattr(settings, "SITE_URL", ""),
         },
     )
     plain_body = (
@@ -1217,9 +1220,13 @@ def send_verification_email(request: HttpRequest, user) -> None:
     """Build verification URL and send after successful DB commit."""
     uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
     token = default_token_generator.make_token(user)
-    verify_url = request.build_absolute_uri(
-        reverse("users:verify_email", args=[uidb64, token])
-    )
+    # Build a canonical absolute verify URL. Prefer SITE_URL setting when present
+    path = reverse("users:verify_email", args=[uidb64, token])
+    site_root = getattr(settings, "SITE_URL", "")
+    if site_root:
+        verify_url = urljoin(site_root.rstrip("/") + "/", path.lstrip("/"))
+    else:
+        verify_url = request.build_absolute_uri(path)
 
     def _send() -> None:
         try:

@@ -1,6 +1,8 @@
 import json
 import requests
 from urllib.parse import urlencode
+from urllib.parse import urljoin
+from django.conf import settings
 
 from django.contrib.auth import authenticate, get_user_model, login, logout
 from django.contrib.auth.decorators import login_required
@@ -320,6 +322,14 @@ def verify_email(request: HttpRequest, uidb64: str, token: str) -> HttpResponse:
                 category="verification",
                 link_url=role_dashboard_url(user.role),
             )
+        # Build absolute login URL for reliable redirect after verification
+        login_path = f"{reverse('users:login')}?role={user.role}"
+        site_root = getattr(settings, "SITE_URL", "")
+        if site_root:
+            absolute_login = urljoin(site_root.rstrip("/") + "/", login_path.lstrip("/"))
+        else:
+            absolute_login = request.build_absolute_uri(login_path)
+        redirect_url = add_auth_notice(absolute_login, AUTH_MESSAGE_KEYS["email_verified"])
         return render(
             request,
             "verification_result.html",
@@ -327,10 +337,7 @@ def verify_email(request: HttpRequest, uidb64: str, token: str) -> HttpResponse:
                 "success": True,
                 "heading": "Email Verified!",
                 "message": "Your email has been successfully verified. Redirecting to login…",
-                "redirect_url": add_auth_notice(
-                    f"{reverse('users:login')}?role={user.role}",
-                    AUTH_MESSAGE_KEYS["email_verified"],
-                ),
+                "redirect_url": redirect_url,
             },
         )
 
