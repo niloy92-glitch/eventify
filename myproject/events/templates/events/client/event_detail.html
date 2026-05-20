@@ -137,6 +137,14 @@
           {{ event_form.event_time }}
         </div>
 
+        <label class="event-edit-checkbox-row" for="client-event-own-venue">
+          {{ event_form.has_own_venue }}
+          <span>
+            <strong>Own venue</strong>
+            <small>Enable this if you will use your own venue instead of renting one.</small>
+          </span>
+        </label>
+
         <div class="form-field">
           <label class="form-field-label" for="client-event-venue-name">Venue name</label>
           {{ event_form.venue_name }}
@@ -151,14 +159,6 @@
           <label class="form-field-label" for="client-event-payment-method">Payment method</label>
           {{ event_form.payment_method }}
         </div>
-
-        <label class="event-edit-checkbox-row" for="client-event-own-venue">
-          {{ event_form.has_own_venue }}
-          <span>
-            <strong>Own venue</strong>
-            <small>Enable this if you will use your own venue instead of renting one.</small>
-          </span>
-        </label>
 
         <div class="form-field event-edit-notes-field">
           <label class="form-field-label" for="client-event-notes">Notes</label>
@@ -185,12 +185,12 @@
 
     function toggleVenueFields() {
       if (ownVenueCheck && venueName && venueAddress) {
-        venueName.disabled = ownVenueCheck.checked;
-        venueAddress.disabled = ownVenueCheck.checked;
+        venueName.disabled = !ownVenueCheck.checked;
+        venueAddress.disabled = !ownVenueCheck.checked;
         const nameGroup = venueName.closest(".form-field");
         const addressGroup = venueAddress.closest(".form-field");
-        if (nameGroup) nameGroup.style.opacity = ownVenueCheck.checked ? "0.5" : "1";
-        if (addressGroup) addressGroup.style.opacity = ownVenueCheck.checked ? "0.5" : "1";
+        if (nameGroup) nameGroup.style.opacity = ownVenueCheck.checked ? "1" : "0.5";
+        if (addressGroup) addressGroup.style.opacity = ownVenueCheck.checked ? "1" : "0.5";
       }
     }
 

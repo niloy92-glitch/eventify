@@ -24,6 +24,11 @@
         {{ event_form.event_time }}
       </div>
 
+      <label class="event-own-venue-field">
+        {{ event_form.has_own_venue }}
+        <span>I already have my own venue</span>
+      </label>
+
       <div class="form-field">
         <label for="client-event-venue-name">Venue name</label>
         {{ event_form.venue_name }}
@@ -38,11 +43,6 @@
         <label for="client-event-payment-method">Payment method</label>
         {{ event_form.payment_method }}
       </div>
-
-      <label class="event-own-venue-field">
-        {{ event_form.has_own_venue }}
-        <span>I already have my own venue</span>
-      </label>
 
       <div class="form-field">
         <label for="client-event-notes">Notes</label>

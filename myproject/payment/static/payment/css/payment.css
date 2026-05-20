@@ -1,0 +1,7 @@
+/* === FILE: myproject/payment/static/payment/css/payment.css === */
+@import url('/static/base.css');
+
+.transactions-table th{background:transparent}
+.transaction-row{display:flex;justify-content:space-between;align-items:center;padding:12px;border-bottom:1px solid var(--line)}
+.transaction-amount{font-weight:700;color:var(--text)}
+.admin-transactions-filter{display:flex;gap:8px}

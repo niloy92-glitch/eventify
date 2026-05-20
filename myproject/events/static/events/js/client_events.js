@@ -110,12 +110,13 @@
       const venueName = document.getElementById("client-event-venue-name");
       const venueAddress = document.getElementById("client-event-venue-address");
       if (ownVenue && venueName && venueAddress) {
-        venueName.disabled = ownVenue.checked;
-        venueAddress.disabled = ownVenue.checked;
+        // Enable fields when checkbox IS checked (user has own venue), disable otherwise
+        venueName.disabled = !ownVenue.checked;
+        venueAddress.disabled = !ownVenue.checked;
         const nameGroup = venueName.closest(".form-field");
         const addressGroup = venueAddress.closest(".form-field");
-        if (nameGroup) nameGroup.style.opacity = ownVenue.checked ? "0.5" : "1";
-        if (addressGroup) addressGroup.style.opacity = ownVenue.checked ? "0.5" : "1";
+        if (nameGroup) nameGroup.style.opacity = ownVenue.checked ? "1" : "0.5";
+        if (addressGroup) addressGroup.style.opacity = ownVenue.checked ? "1" : "0.5";
       }
     }
 
