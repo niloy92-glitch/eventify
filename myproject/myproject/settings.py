@@ -8,8 +8,29 @@ from os import getenv
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(BASE_DIR / ".env")
-load_dotenv(BASE_DIR.parent / ".env")
+
+# ===== ENVIRONMENT LOADING =====
+# This project supports local development with .env.local or .env.
+# When a local env file exists, load it before evaluating IS_LOCAL_DEV.
+local_env_path = BASE_DIR / "../.env.local"
+root_env_path = BASE_DIR / "../.env"
+loaded_env = False
+
+if getenv("IS_LOCAL_DEV") is None:
+    if local_env_path.exists():
+        load_dotenv(local_env_path, override=False)
+        loaded_env = True
+    elif root_env_path.exists():
+        load_dotenv(root_env_path, override=False)
+        loaded_env = True
+
+IS_LOCAL_DEV = getenv("IS_LOCAL_DEV", "false").strip().lower() in ("true", "1", "yes")
+
+if IS_LOCAL_DEV and not loaded_env:
+    if local_env_path.exists():
+        load_dotenv(local_env_path, override=False)
+    elif root_env_path.exists():
+        load_dotenv(root_env_path, override=False)
 
 
 def env_bool(name: str, default: bool = False) -> bool:
@@ -45,10 +66,9 @@ SECRET_KEY = env_str("DJANGO_SECRET_KEY", "django-insecure-dev-key")
 # SECURITY: DEBUG defaults to False (production-safe). Set DEBUG=True only in development.
 DEBUG = env_bool("DJANGO_DEBUG", False)
 
-# SECURITY: ALLOWED_HOSTS must be explicitly set. Defaults to localhost only.
-# For production, set ALLOWED_HOSTS env var to comma-separated list (e.g. "example.com,www.example.com")
-# _default_hosts = "localhost,127.0.0.1" if not env_bool("DJANGO_DEBUG", False) else "*"
-_default_hosts = "*" if DEBUG else "localhost,127.0.0.1"
+# SECURITY: ALLOWED_HOSTS must be explicitly set for non-local environments.
+# For production, set ALLOWED_HOSTS env var to comma-separated list (e.g. "example.com,www.example.com").
+_default_hosts = "localhost,127.0.0.1" if IS_LOCAL_DEV else ""
 ALLOWED_HOSTS = [
     host.strip()
     for host in env_str("ALLOWED_HOSTS", _default_hosts).split(",")
@@ -60,6 +80,13 @@ CSRF_TRUSTED_ORIGINS = [
     for origin in env_str("CSRF_TRUSTED_ORIGINS", "").split(",")
     if origin.strip()
 ]
+if IS_LOCAL_DEV:
+    CSRF_TRUSTED_ORIGINS.extend(
+        [
+            "http://localhost",
+            "http://127.0.0.1",
+        ]
+    )
 
 INSTALLED_APPS = [
     "django.contrib.admin",

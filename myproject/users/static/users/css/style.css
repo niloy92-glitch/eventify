@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=Libre+Baskerville:wght@400;600;700&display=swap');
 
 /* ─────────────────────────────────────────
    DESIGN TOKENS
@@ -206,6 +206,14 @@ textarea { resize: none; }
 .card h2 { font-size: 1.5rem; font-weight: 700; letter-spacing: -.01em; }
 .card h3 { font-size: 1.125rem; font-weight: 700; }
 .card h4 { font-size: 1rem; font-weight: 600; }
+
+/* Page-head specific heading: use Libre Baskerville with lighter weight and more open spacing */
+.page-head h1,
+h1.page-head {
+  font-family: 'Libre Baskerville', serif;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
 
 .card p {
   margin-bottom: var(--sp-md);

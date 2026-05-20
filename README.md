@@ -78,7 +78,7 @@ A Django-based event management platform for **clients** to book services, **ven
 
 ```bash
 # Clone the repository
-git clone <repo-url>
+git clone <repo-url>.git
 cd eventify
 
 # Create virtual environment
@@ -96,18 +96,26 @@ pip install -r requirements.txt
 
 ### 2. Configure Environment
 
-Copy `.env.example` to `.env` and fill in required values:
+Copy `.env.example` to `.env.local` for local development, or to `.env` if you prefer a generic env file:
 
 ```bash
-cp .env.example .env
-# Edit .env with your settings (see section below)
+cp .env.example .env.local
+# Or use a generic env file:
+# cp .env.example .env
+# Edit the file with your settings (see section below)
 ```
 
 ### 3. Database Setup
 
 ```bash
 # Run migrations to set up schema
+# From the repository root:
 cd myproject
+python manage.py makemigrations
+python manage.py migrate
+
+# Or from inside the myproject folder:
+python manage.py makemigrations
 python manage.py migrate
 
 # Create superuser (admin account)
@@ -117,7 +125,9 @@ python manage.py createsuperuser
 ### 4. Run Development Server
 
 ```bash
+# From the repository root:
 cd myproject
+# Or from inside the myproject folder:
 python manage.py runserver
 
 # Access at http://localhost:8000
