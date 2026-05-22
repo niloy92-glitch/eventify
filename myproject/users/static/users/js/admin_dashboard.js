@@ -62,6 +62,33 @@
     nodes.badge.hidden = nextCount <= 0;
   }
 
+  function positionPopover() {
+    const nodes = getNotificationNodes();
+    if (!nodes.button || !nodes.popover || nodes.popover.hidden) return;
+
+    const buttonRect = nodes.button.getBoundingClientRect();
+    const popoverWidth = Math.min(300, Math.max(220, window.innerWidth - 32));
+    const popoverHeight = nodes.popover.offsetHeight;
+    const left = Math.max(
+      16,
+      Math.min(buttonRect.left, window.innerWidth - popoverWidth - 16)
+    );
+    let top = buttonRect.top - popoverHeight - 12;
+
+    if (top < 16) {
+      top = buttonRect.bottom + 12;
+    }
+
+    if (top + popoverHeight > window.innerHeight - 16) {
+      top = Math.max(16, window.innerHeight - popoverHeight - 16);
+    }
+
+    nodes.popover.style.width = popoverWidth + "px";
+    nodes.popover.style.left = left + "px";
+    nodes.popover.style.top = top + "px";
+    nodes.popover.style.bottom = "auto";
+  }
+
   function renderNotifications(items) {
     const nodes = getNotificationNodes();
     if (!nodes.list) return;
@@ -118,11 +145,16 @@
     function closePopover() {
       nodes.popover.hidden = true;
       nodes.button.setAttribute("aria-expanded", "false");
+      nodes.popover.style.width = "";
+      nodes.popover.style.left = "";
+      nodes.popover.style.top = "";
+      nodes.popover.style.bottom = "";
     }
 
     function openPopover() {
       nodes.popover.hidden = false;
       nodes.button.setAttribute("aria-expanded", "true");
+      window.requestAnimationFrame(positionPopover);
     }
 
     function fetchNotifications(allowSound) {
@@ -140,6 +172,7 @@
           const nextCount = Number(data.notification_unseen_count || 0);
           renderNotifications(data.notification_items || []);
           updateBadge(nextCount);
+          positionPopover();
 
           if (allowSound && soundArmed && nextCount > lastCount) {
             playTwing();
@@ -153,6 +186,9 @@
     }
 
     function markAllSeen() {
+      lastCount = 0;
+      updateBadge(0);
+
       if (!markSeenUrl) {
         return Promise.resolve();
       }
@@ -165,8 +201,8 @@
           "X-Requested-With": "XMLHttpRequest",
         },
       }).then(function () {
-        lastCount = 0;
-        updateBadge(0);
+        return fetchNotifications(false);
+      }).catch(function () {
         return fetchNotifications(false);
       });
     }
@@ -201,6 +237,14 @@
         closePopover();
       }
     });
+
+    window.addEventListener("resize", function () {
+      positionPopover();
+    });
+
+    window.addEventListener("scroll", function () {
+      positionPopover();
+    }, true);
 
     document.addEventListener("pointerdown", function () {
       soundArmed = true;

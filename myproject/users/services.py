@@ -551,7 +551,10 @@ def vendor_dashboard_data(request: HttpRequest) -> dict:
         try:
             from services.models import Service
 
-            services_count = Service.objects.filter(vendor=request.user).count()
+            services_count = Service.objects.filter(
+                vendor=request.user,
+                is_approved=True,
+            ).count()
         except Exception:
             services_count = 0
 
@@ -566,18 +569,23 @@ def vendor_dashboard_data(request: HttpRequest) -> dict:
 
         try:
             booking_total_count = (
-                booking_model.objects.filter(service__vendor=request.user).count()
+                booking_model.objects.filter(
+                    service__vendor=request.user,
+                    status="approved",
+                ).count()
                 if booking_model is not None
                 else 0
             )
         except Exception:
             booking_total_count = 0
 
+        upcoming_count = event_bookings.values("event_id").distinct().count()
+
         return {
             "today_label": today.strftime("%A, %B %d, %Y"),
             "stats": {
                 "services": services_count,
-                "events": len(seen_event_ids),
+                "events": upcoming_count,
                 "messages": messages_count,
                 "bookings": booking_total_count,
             },
@@ -845,12 +853,19 @@ def client_dashboard_data(request: HttpRequest) -> dict:
     if event_model is not None:
         queryset = event_model.objects.filter(client=request.user)
         total_events = queryset.count()
-        ongoing_events = queryset.filter(event_date=today).count()
+        ongoing_events = queryset.filter(
+            event_date=today,
+            completed_at__isnull=True,
+        ).count()
         upcoming_queryset = queryset.filter(event_date__gte=today).order_by(
             "event_date", "created_at"
         )
         upcoming_events = upcoming_queryset.count()
-        completed_events = queryset.filter(event_date__lt=today).count()
+        completed_events = queryset.filter(completed_at__isnull=False).count()
+        canceled_events = queryset.filter(
+            event_date__lt=today,
+            completed_at__isnull=True,
+        ).count()
 
         for event in upcoming_queryset[:5]:
             upcoming_list.append(
@@ -930,10 +945,19 @@ def admin_dashboard_data() -> dict:
     today = timezone.localdate()
 
     services_count = Service.objects.count()
-    events_running = Event.objects.filter(event_date=today).count()
-    events_upcoming = Event.objects.filter(event_date__gt=today).count()
-    events_canceled = 0  # No status field on Event yet
-    events_completed = Event.objects.filter(event_date__lt=today).count()
+    events_running = Event.objects.filter(
+        event_date=today,
+        completed_at__isnull=True,
+    ).count()
+    events_upcoming = Event.objects.filter(
+        event_date__gt=today,
+        completed_at__isnull=True,
+    ).count()
+    events_canceled = Event.objects.filter(
+        event_date__lt=today,
+        completed_at__isnull=True,
+    ).count()
+    events_completed = Event.objects.filter(completed_at__isnull=False).count()
 
     recent_activities = [
         {

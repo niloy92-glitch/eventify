@@ -1,11 +1,20 @@
 {% extends 'users/base_dashboard.html' %}
+{% load static %}
 
 {% block title %}Client Dashboard{% endblock %}
 
 {% block body_role %}client{% endblock %}
 
 {% block sidebar_logo %}
-  <a class="logo-link sidebar-logo" href="{% url 'users:client_dashboard' %}">Event<span>ify</span></a>
+  <a class="logo-link sidebar-logo" href="{% url 'users:client_dashboard' %}">
+    <img
+      class="brand-logo-mark"
+      src="{% static 'images/logo.png' %}"
+      alt=""
+      aria-hidden="true"
+    />
+    Event<span>ify</span>
+  </a>
 {% endblock %}
 
 {% block sidebar_profile %}

@@ -26,9 +26,14 @@
 .sidebar-logo {
   margin-bottom: 12px;
   font-family: var(--font-display);
-  font-size: 1.25rem;
+  font-size: 1.35rem;
   font-weight: 800;
   letter-spacing: -.02em;
+}
+
+.sidebar-logo .brand-logo-mark {
+  width: 48px;
+  height: 48px;
 }
 
 .sidebar-logo a {
@@ -36,7 +41,12 @@
   text-decoration: none;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
+}
+
+@media (max-width:900px) {
+  .sidebar-logo .brand-logo-mark { width: 36px; height: 36px; }
+  .sidebar-logo { font-size: 1.15rem; }
 }
 
 .sidebar-logo span {
@@ -195,9 +205,9 @@
 }
 
 .notification-popover {
-  position: absolute;
+  position: fixed;
   left: 0;
-  bottom: calc(100% + 10px);
+  top: 0;
   width: 300px;
   max-width: calc(100vw - 40px);
   background: var(--surface);
@@ -205,8 +215,16 @@
   border-radius: 12px;
   box-shadow: var(--shadow-lg);
   padding: 14px;
-  z-index: 20;
+  z-index: 60;
+  max-height: min(420px, calc(100vh - 32px));
+  overflow: hidden;
   animation: slideUp .2s ease;
+  display: none;
+  flex-direction: column;
+}
+
+.notification-popover:not([hidden]) {
+  display: flex;
 }
 
 @keyframes slideUp {
@@ -255,11 +273,12 @@
 
 .notification-popover ul {
   list-style: none;
+  flex: 1;
+  min-height: 0;
   display: grid;
   gap: 10px;
   padding: 0;
   margin: 0;
-  max-height: 360px;
   overflow-y: auto;
 }
 

@@ -1,15 +1,21 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
-from django.test import TestCase
+from django.test import RequestFactory, TestCase
 from django.urls import reverse
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
+from django.utils import timezone
+from datetime import timedelta
+
+from events.models import Event, EventServiceBooking
+from services.models import Service
 
 from .models import (
     ApprovalStatusChoices,
     Notification,
     NotificationCategoryChoices,
 )
+from .services import vendor_dashboard_data
 
 
 User = get_user_model()
@@ -280,6 +286,82 @@ class AuthFlowTests(TestCase):
         self.assertNotContains(response, "Other item")
         self.assertEqual(response.json()["notification_unseen_count"], 1)
 
+    def test_notification_mark_seen_clears_unseen_notifications(self):
+        user = User.objects.create_user(
+            email="mark-seen@example.com",
+            password="secret12345",
+            role="client",
+            email_verified=True,
+        )
+        Notification.objects.create(
+            recipient=user,
+            title="Unread item",
+            message="Needs to be cleared",
+        )
+        self.client.force_login(user)
+
+        response = self.client.post(reverse("users:notification_mark_seen"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["notification_unseen_count"], 0)
+        self.assertFalse(
+            Notification.objects.filter(recipient=user, is_seen=False).exists()
+        )
+
+    def test_vendor_dashboard_stats_use_live_counts(self):
+        vendor = User.objects.create_user(
+            email="vendor-stats@example.com",
+            password="secret12345",
+            role="vendor",
+            email_verified=True,
+            company_name="Stats Vendor",
+        )
+        client = User.objects.create_user(
+            email="client-stats@example.com",
+            password="secret12345",
+            role="client",
+            email_verified=True,
+        )
+        approved_service = Service.objects.create(
+            vendor=vendor,
+            name="Approved Service",
+            description="Visible in stats",
+            is_approved=True,
+        )
+        pending_service = Service.objects.create(
+            vendor=vendor,
+            name="Draft Service",
+            description="Should not count as active",
+            is_approved=False,
+        )
+        event = Event.objects.create(
+            client=client,
+            title="Future Event",
+            event_date=timezone.localdate() + timedelta(days=5),
+        )
+        EventServiceBooking.objects.create(
+            event=event,
+            service=approved_service,
+            vendor=vendor,
+            requested_date=event.event_date,
+            status="approved",
+        )
+        EventServiceBooking.objects.create(
+            event=event,
+            service=pending_service,
+            vendor=vendor,
+            requested_date=event.event_date,
+            status="pending",
+        )
+
+        request = RequestFactory().get("/")
+        request.user = vendor
+        context = vendor_dashboard_data(request)
+
+        self.assertEqual(context["stats"]["services"], 1)
+        self.assertEqual(context["stats"]["events"], 1)
+        self.assertEqual(context["stats"]["bookings"], 1)
+
     def test_vendor_registration_notifies_admins(self):
         admin_user = User.objects.create_user(
             email="admin-request@example.com",
@@ -382,7 +464,7 @@ class AuthFlowTests(TestCase):
 
         response = self.client.get(reverse("users:client_dashboard"))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Welcome to Dashboard")
+        self.assertContains(response, "Welcome to Client Dashboard")
         self.assertContains(response, "My Events")
 
     def test_client_placeholder_page_loads_for_client_user(self):

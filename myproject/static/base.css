@@ -49,6 +49,32 @@ h4{font-size:1rem;font-weight:600;margin:0 0 .3rem}
 .muted{color:var(--muted)}
 
 /* Logo wordmark helper */
+.logo-link,
+.auth-brand-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-logo-mark {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+
+.auth-brand-logo .brand-logo-mark {
+  width: 56px;
+  height: 56px;
+}
+
+/* Responsive adjustments for smaller screens */
+@media (max-width:900px) {
+  .brand-logo-mark { width: 40px; height: 40px; }
+  .auth-brand-logo .brand-logo-mark { width: 48px; height: 48px; }
+  .logo-link, .auth-brand-logo { gap: 10px; }
+}
+
 .logo-link span{color:var(--gold);font-weight:700}
 
 /* Glassmorphism base utility (apply to bounded surfaces) */
